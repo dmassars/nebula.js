@@ -1,6 +1,7 @@
+/* eslint no-underscore-dangle:0 */
 import React, { useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
 
-import nucleus from '@nebula.js/nucleus/src/index';
+import { embed } from '@nebula.js/stardust';
 import { createTheme, ThemeProvider } from '@nebula.js/ui/theme';
 import { WbSunny, Brightness3, ColorLens, Language, Home } from '@nebula.js/ui/icons';
 
@@ -62,7 +63,7 @@ export default function App({ app, info }) {
   const [currentId, setCurrentId] = useState();
   const [themeChooserAnchorEl, setThemeChooserAnchorEl] = React.useState(null);
   const [languageChooserAnchorEl, setLanguageChooserAnchorEl] = React.useState(null);
-
+  const [nebbie, setNebbie] = useState(null);
   const customThemes = info.themes && info.themes.length ? ['light', 'dark', ...info.themes] : [];
 
   const theme = useMemo(() => createTheme(currentMuiThemeName), [currentMuiThemeName]);
@@ -78,31 +79,32 @@ export default function App({ app, info }) {
     [activeViz, expandedObject, currentThemeName]
   );
 
-  const nebbie = useMemo(() => {
-    const n = nucleus(app, {
+  useEffect(() => {
+    const n = embed(app, {
       context: {
         theme: currentThemeName,
         language: currentLanguage,
       },
-      load: type => Promise.resolve(window[type.name]),
+      load: (type) => Promise.resolve(window[type.name]),
       themes: info.themes
-        ? info.themes.map(t => ({
+        ? info.themes.map((t) => ({
             key: t,
             load: () =>
               fetch(`/theme/${t}`)
-                .then(response => response.json())
-                .then(raw => {
+                .then((response) => response.json())
+                .then((raw) => {
                   setCurrentMuiThemeName(raw.type === 'dark' ? 'dark' : 'light');
                   return raw;
                 }),
           }))
         : null,
     });
-    n.types.register(info.supernova);
-    return n;
+    n.__DO_NOT_USE__.types.register(info.supernova);
+    setNebbie(n);
   }, [app]);
 
   useLayoutEffect(() => {
+    if (!nebbie) return;
     nebbie.context({ theme: currentThemeName });
     if (currentThemeName === 'light' || currentThemeName === 'dark') {
       setCurrentMuiThemeName(currentThemeName);
@@ -110,6 +112,7 @@ export default function App({ app, info }) {
   }, [nebbie, currentThemeName]);
 
   useEffect(() => {
+    if (!nebbie) return undefined;
     const create = () => {
       if (window[info.supernova.name]) {
         uid.current = String(Date.now());
@@ -117,17 +120,14 @@ export default function App({ app, info }) {
       }
     };
 
-    nebbie.selections().then(s => s.mount(currentSelectionsRef.current));
+    nebbie.selections().then((s) => s.mount(currentSelectionsRef.current));
     window.onHotChange(info.supernova.name, () => {
-      nebbie.types.clearFromCache(info.supernova.name);
-      nebbie.types.register(info.supernova);
-      if (uid.current) {
-        app.destroySessionObject(uid.current).then(create);
-      } else {
-        create();
-      }
+      nebbie.__DO_NOT_USE__.types.clearFromCache(info.supernova.name);
+      nebbie.__DO_NOT_USE__.types.register(info.supernova);
 
-      nebbie.types
+      create();
+
+      nebbie.__DO_NOT_USE__.types
         .get({
           name: info.supernova.name,
         })
@@ -144,15 +144,15 @@ export default function App({ app, info }) {
     return () => {
       window.removeEventListener('beforeunload', unload);
     };
-  }, []);
+  }, [nebbie]);
 
-  const handleThemeChange = t => {
+  const handleThemeChange = (t) => {
     setThemeChooserAnchorEl(null);
     storage.save('themeName', t);
     setCurrentThemeName(t);
   };
 
-  const handleLanguageChange = lang => {
+  const handleLanguageChange = (lang) => {
     setLanguageChooserAnchorEl(null);
     storage.save('language', lang);
     setCurrentLanguage(lang);
@@ -214,7 +214,7 @@ export default function App({ app, info }) {
                       <Home style={{ verticalAlign: 'middle' }} />
                     </IconButton>
                   </Grid>
-                  <Grid item xs>
+                  <Grid item xs zeroMinWidth>
                     <Tabs value={objectListMode ? 1 : 0} onChange={handleCreateEditChange} aria-label="Navigation">
                       <Tab label={<Typography>Create</Typography>} value={0} />
                       <Tab label={<Typography>Edit</Typography>} value={1} />
@@ -224,7 +224,7 @@ export default function App({ app, info }) {
                     <Grid item>
                       {customThemes.length ? (
                         <>
-                          <IconButton title="Select theme" onClick={e => setThemeChooserAnchorEl(e.currentTarget)}>
+                          <IconButton title="Select theme" onClick={(e) => setThemeChooserAnchorEl(e.currentTarget)}>
                             <ColorLens fontSize="small" />
                           </IconButton>
                           <Menu
@@ -233,7 +233,7 @@ export default function App({ app, info }) {
                             keepMounted
                             onClose={() => setThemeChooserAnchorEl(null)}
                           >
-                            {customThemes.map(t => (
+                            {customThemes.map((t) => (
                               <MenuItem key={t} selected={t === currentThemeName} onClick={() => handleThemeChange(t)}>
                                 {t}
                               </MenuItem>
@@ -254,7 +254,7 @@ export default function App({ app, info }) {
                       <Button
                         startIcon={<Language />}
                         title="Select language"
-                        onClick={e => setLanguageChooserAnchorEl(e.currentTarget)}
+                        onClick={(e) => setLanguageChooserAnchorEl(e.currentTarget)}
                       >
                         {currentLanguage}
                       </Button>
@@ -264,7 +264,7 @@ export default function App({ app, info }) {
                         keepMounted
                         onClose={() => setLanguageChooserAnchorEl(null)}
                       >
-                        {languages.map(t => (
+                        {languages.map((t) => (
                           <MenuItem key={t} selected={t === currentLanguage} onClick={() => handleLanguageChange(t)}>
                             {t}
                           </MenuItem>
@@ -282,7 +282,7 @@ export default function App({ app, info }) {
               <VizContext.Provider value={vizContext}>
                 {sn ? (
                   <Grid container wrap="nowrap" style={{ height: '100%' }} spacing={SPACING}>
-                    <Grid item xs>
+                    <Grid item xs zeroMinWidth>
                       {objectListMode ? (
                         <Collection cache={currentId} types={[info.supernova.name]} />
                       ) : (
@@ -301,7 +301,7 @@ export default function App({ app, info }) {
                           padding: 0,
                         }}
                       >
-                        <Properties sn={sn} viz={activeViz} isTemp={!objectListMode} />
+                        <Properties sn={sn} viz={activeViz} isTemp={!objectListMode} storage={storage} />
                       </Grid>
                     )}
                   </Grid>

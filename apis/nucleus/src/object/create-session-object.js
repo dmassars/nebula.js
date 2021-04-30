@@ -1,20 +1,28 @@
 import populateData from './populator';
 import init from './initiate';
-import { subscribe } from '../stores/modelStore';
+import { subscribe, modelStore } from '../stores/model-store';
+
+/**
+ * @typedef {string | qae.NxDimension | qae.NxMeasure | LibraryField} Field
+ */
+
 /**
  * @interface CreateConfig
+ * @description Rendering configuration for creating and rendering a new object
  * @extends BaseConfig
  * @property {string} type
  * @property {string} version
  * @property {(Field[])=} fields
  * @property {qae.GenericObjectProperties=} properties
  */
-
-export default async function createSessionObject({ type, version, fields, properties, options, element }, corona) {
+export default async function createSessionObject(
+  { type, version, fields, properties, options, plugins, element },
+  halo
+) {
   let mergedProps = {};
   let error;
   try {
-    const t = corona.public.nebbie.types.get({ name: type, version });
+    const t = halo.types.get({ name: type, version });
     mergedProps = await t.initialProperties(properties);
     const sn = await t.supernova();
     if (fields) {
@@ -24,7 +32,7 @@ export default async function createSessionObject({ type, version, fields, prope
           properties: mergedProps,
           fields,
         },
-        corona
+        halo
       );
     }
     if (properties && sn && sn.qae.properties.onChange) {
@@ -42,11 +50,12 @@ export default async function createSessionObject({ type, version, fields, prope
     };
     // console.error(e); // eslint-disable-line
   }
-  const model = await corona.app.createSessionObject(mergedProps);
+  const model = await halo.app.createSessionObject(mergedProps);
+  modelStore.set(model.id, model);
   const unsubscribe = subscribe(model);
   const onDestroy = async () => {
-    await corona.app.destroySessionObject(model.id);
+    await halo.app.destroySessionObject(model.id);
     unsubscribe();
   };
-  return init(model, { options, element }, corona, error, onDestroy);
+  return init(model, { options, plugins, element }, halo, error, onDestroy);
 }

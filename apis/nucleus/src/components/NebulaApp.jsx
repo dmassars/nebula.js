@@ -56,9 +56,11 @@ const NebulaApp = forwardRef(({ initialContext, app }, ref) => {
   );
 });
 
+export { NebulaApp };
+
 export default function boot({ app, context }) {
   let resolveRender;
-  const rendered = new Promise(resolve => {
+  const rendered = new Promise((resolve) => {
     resolveRender = resolve;
   });
   const appRef = React.createRef();

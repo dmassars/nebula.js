@@ -1,4 +1,3 @@
-import 'regenerator-runtime/runtime'; // Polyfill for using async/await
 import generator from './generator';
 
 export { generator };
@@ -21,6 +20,8 @@ export {
   useStaleLayout,
   useAppLayout,
   useTranslator,
+  useDeviceType,
+  usePlugins,
   useConstraints,
   useOptions,
   onTakeSnapshot,

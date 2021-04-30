@@ -6,12 +6,8 @@
       "message": "chore(release): %s 🚀"
     }
   },
-  "ignoreChanges": [
-    "**/*.md",
-    "**/__tests__/**",
-    "**/__stories__/**"
-  ],
-  "version": "0.2.1",
+  "ignoreChanges": ["**/*.md", "**/__tests__/**", "**/__stories__/**"],
+  "version": "1.1.1",
   "npmClient": "yarn",
   "useWorkspaces": true
 }

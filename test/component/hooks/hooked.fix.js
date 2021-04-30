@@ -8,18 +8,20 @@ import {
   useElement,
   useTheme,
   useTranslator,
+  useDeviceType,
   usePromise,
   useAction,
   useConstraints,
   useOptions,
-} from '@nebula.js/supernova';
+} from '@nebula.js/stardust';
 
-function sn() {
+function sn({ flags }) {
   return {
     component: () => {
       const [count, setCount] = useState(0);
       const element = useElement();
       const translator = useTranslator();
+      const deviceType = useDeviceType();
       const theme = useTheme();
       const layout = useLayout();
       const appLayout = useAppLayout();
@@ -43,7 +45,7 @@ function sn() {
           if (count >= 1) {
             act();
           } else {
-            setCount(prev => prev + 1);
+            setCount((prev) => prev + 1);
           }
         };
         element.addEventListener('click', listener);
@@ -55,7 +57,7 @@ function sn() {
 
       const [v] = usePromise(
         () =>
-          new Promise(r => {
+          new Promise((r) => {
             setTimeout(() => {
               r('ready!');
             }, 100);
@@ -67,12 +69,14 @@ function sn() {
         <div class="state">${count}</div>
         <div class="layout">${layout.showTitles}</div>
         <div class="applayout">${appLayout.qTitle}</div>
-        <div class="translator">${translator.get('Common.Cancel')}</div>
+        <div class="translator">${translator.get('Cancel')}</div>
+        <div class="deviceType">${deviceType}</div>
         <div class="theme">${theme.getColorPickerColor({ index: 2 })}</div>
         <div class="promise">${v || 'pending'}</div>
         <div class="action">${acted}</div>
         <div class="constraints">${!!passive}:${!!active}:${!!select}</div>
         <div class="options">${options.myOption}</div>
+        <div class="flags">${flags.isEnabled('MAGIC_FLAG')}:${flags.isEnabled('_UNKNOWN_')}</div>
       </div>
       `;
     },
@@ -83,6 +87,11 @@ export default function fixture() {
   return {
     type: 'sn-mounted',
     sn,
+    instanceConfig: {
+      flags: {
+        MAGIC_FLAG: true,
+      },
+    },
     snConfig: {
       options: {
         myOption: 'opts',

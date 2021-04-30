@@ -2,7 +2,7 @@ import React, { forwardRef, useImperativeHandle } from 'react';
 import { create, act } from 'react-test-renderer';
 
 import useRpc from '../useRpc';
-import { rpcRequestStore } from '../../stores/modelStore';
+import { rpcRequestStore } from '../../stores/model-store';
 
 const TestHook = forwardRef(({ hook, hookProps }, ref) => {
   const result = hook(...hookProps);
@@ -37,7 +37,7 @@ describe('useRpc', () => {
   afterEach(() => {
     sandbox.restore();
     renderer.unmount();
-    rpcRequestStore.set('useRpc', undefined);
+    rpcRequestStore.clear('useRpc');
   });
 
   it('should call method', async () => {
@@ -67,11 +67,14 @@ describe('useRpc', () => {
   });
 
   it('should dispatch cancelled', async () => {
-    model.getLayout = sandbox.stub().returns(new Promise(() => {}));
     await render(useRpc, model, 'getLayout');
-    ref.current.result[2].cancel();
-    await render(useRpc, model, 'getLayout');
-    expect(ref.current.result[1]).to.deep.equal({ validating: false, canCancel: false, canRetry: true });
+    await act(async () => ref.current.result[2].cancel());
+    expect(ref.current.result[0]).to.deep.equal({ foo: 'bar' });
+    expect(ref.current.result[1]).to.deep.equal({
+      validating: false,
+      canCancel: false,
+      canRetry: true,
+    });
   });
 
   it('should retry', async () => {

@@ -6,7 +6,7 @@ import OneField from '../OneField';
 export default {
   title: 'Selections|One field',
   component: OneField,
-  decorators: [story => <div style={{ backgroundColor: '#eee', padding: '16px' }}>{story()}</div>],
+  decorators: [(story) => <div style={{ backgroundColor: '#eee', padding: '16px' }}>{story()}</div>],
 };
 
 const api = {
@@ -28,7 +28,13 @@ const api = {
 
 const states = [
   { info: 'None', qTotal: 0 },
-  { info: 'Locked', qTotal: 0, qLocked: true },
+  {
+    info: 'One locked',
+    qTotal: 20,
+    qLocked: true,
+    qStateCounts: { qSelected: 1, qLocked: 0, qAlternative: 0, qExcluded: 0, qSelectedExcluded: 0, qLockedExcluded: 0 },
+    qSelectedFieldSelectionInfo: [{ qName: 'Candy' }],
+  },
   {
     info: 'One',
     qTotal: 20,
@@ -46,20 +52,20 @@ const states = [
     qStateCounts: {
       qSelected: 10,
       qLocked: 4,
-      qAlternative: 0,
+      qAlternative: 2,
       qExcluded: 0,
-      qSelectedExcluded: 5,
+      qSelectedExcluded: 3,
       qLockedExcluded: 1,
     },
   },
 ];
 
-const stateFn = state => (
+const stateFn = (state) => (
   <OneField
     api={api}
     field={{
       states: [text('State', '$')],
-      selections: [{ qField: text('Field', 'Product'), ...state, qLocked: boolean('Locked', !!state.qLocked) }],
+      selections: [{ qField: text('Field', 'Product'), ...state, qLocked: !!state.qLocked }],
     }}
   />
 );

@@ -6,7 +6,7 @@
   "parserOptions": {
     "sourceType": "module"
   },
-  "extends": ["airbnb", "prettier", "prettier/react"],
+  "extends": ["airbnb", "prettier"],
   "plugins": ["prettier"],
   "rules": {
     "max-len": 0,
@@ -24,6 +24,12 @@
     "__NEBULA_DEV__": false
   },
   "overrides": [
+    {
+      "files": ["scripts/**/*", "**/apis/*/scripts/**/*"],
+      "rules": {
+        "no-restricted-syntax": 0
+      }
+    },
     {
       "files": ["apis/**/*"],
       "rules": {

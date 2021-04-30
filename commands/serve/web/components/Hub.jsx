@@ -1,3 +1,4 @@
+/* eslint no-nested-ternary: 0 */
 import React, { useState, useEffect } from 'react';
 
 import { createTheme, ThemeProvider } from '@nebula.js/ui/theme';
@@ -30,10 +31,10 @@ const themeDark = createTheme('dark');
 function SelectEngine({ info, children }) {
   const [items, setItems] = useState(storage.get('connections') || []);
   const [showInstructions, setShowInstructions] = useState(!items.length);
-  const [goTo] = useState(() => u => `${window.location.origin}?engine_url=${u.replace('?', '&')}`);
+  const [goTo] = useState(() => (u) => `${window.location.origin}?engine_url=${u.replace('?', '&')}`);
   let typedUrl;
 
-  const onRemove = li => {
+  const onRemove = (li) => {
     const idx = items.indexOf(li);
     if (li !== -1) {
       const its = items.slice();
@@ -43,7 +44,7 @@ function SelectEngine({ info, children }) {
     }
   };
 
-  const onKeyDown = e => {
+  const onKeyDown = (e) => {
     switch (e.key) {
       case 'Enter':
         typedUrl = e.target.value;
@@ -66,7 +67,7 @@ function SelectEngine({ info, children }) {
           </Typography>
         </Grid>
         <Grid item>
-          <IconButton onClick={() => setShowInstructions(s => !s)} size="small">
+          <IconButton onClick={() => setShowInstructions((s) => !s)} size="small">
             <Help />
           </IconButton>
         </Grid>
@@ -76,7 +77,7 @@ function SelectEngine({ info, children }) {
         <>
           <Typography variant="h6">Previous connections</Typography>
           <List>
-            {items.map(li => (
+            {items.map((li) => (
               <ListItem button key={li} component="a" href={goTo(li)}>
                 <ListItemText primary={li} />
                 <ListItemSecondaryAction>
@@ -110,29 +111,10 @@ function SelectEngine({ info, children }) {
         <Typography variant="body2" paragraph>
           The development server needs to connect to and communicate with the Qlik Associative Engine running within any
           of Qlik&apos;s product offerings. The connection is done through the WebSocket protocol using a WebSocket URL
-          format the differs slightly between products. Enter the WebSocket URL that corresponds to the Qlik product you
-          are using.
+          format that differs slightly between products. Enter the WebSocket URL that corresponds to the Qlik product
+          you are using.
         </Typography>
 
-        <Typography variant="subtitle1" gutterBottom>
-          Qlik Core
-        </Typography>
-        <Typography variant="body2" paragraph>
-          WebSocket URL format: <code>ws://&lt;host&gt;:&lt;port&gt;</code>
-          <br />
-          Example: <code>ws://localhost:9076</code>
-          <br />
-          <br />
-          For more info, visit{' '}
-          <Link
-            color="secondary"
-            underline="always"
-            href="https://core.qlik.com/services/qix-engine/apis/qix/introduction/#websockets"
-          >
-            QIX WebSocket Introduction
-          </Link>
-          .
-        </Typography>
         <Typography variant="subtitle1" gutterBottom>
           Qlik Cloud Services
         </Typography>
@@ -142,11 +124,14 @@ function SelectEngine({ info, children }) {
             wss://&lt;tenant&gt;.&lt;region&gt;.qlikcloud.com?qlik-web-integration-id=&lt;web-integration-id&gt;
           </code>
           <br />
-          Example: <code>wss://qlik.eu.qlikclount.com?qlik-web-integration-id=xxx</code>
+          Example: <code>wss://qlik.eu.qlikcloud.com?qlik-web-integration-id=xxx</code>
           <br />
           <br />
-          The <code>qlik-web-integration-id</code> must be present in order for Qlik Sense to confirm that the request
-          originates from a whitelisted domain. For more info, visit{' '}
+          The <code>qlik-web-integration-id</code> must be present in order for QCS to confirm that the request
+          originates from a whitelisted domain.
+          <br />
+          <br />
+          For more info, visit{' '}
           <Link
             color="secondary"
             underline="always"
@@ -168,9 +153,29 @@ function SelectEngine({ info, children }) {
           Note that for the Qlik Sense Proxy to allow sessions from this webpage, <code>
             {window.location.host}
           </code>{' '}
-          needs to be whitelisted in QMC in your Qlik Sense Enterprise on Windows deployment.
+          needs to be whitelisted in QMC in your Qlik Sense Enterprise on Windows deployment. In addition, you need to
+          enable <i>Has secure attribute</i> and set <i>SameSite attribute</i> to <i>None</i>.
           <br />
-          Make sure that you are logged in to Qlik Sense in another browser tab.
+          Make sure you are logged in to Qlik Sense in another browser tab.
+        </Typography>
+        <Typography variant="subtitle1" gutterBottom>
+          Qlik Core
+        </Typography>
+        <Typography variant="body2" paragraph>
+          WebSocket URL format: <code>ws://&lt;host&gt;:&lt;port&gt;</code>
+          <br />
+          Example: <code>ws://localhost:9076</code>
+          <br />
+          <br />
+          For more info, visit{' '}
+          <Link
+            color="secondary"
+            underline="always"
+            href="https://core.qlik.com/services/qix-engine/apis/qix/introduction/#websockets"
+          >
+            QIX WebSocket Introduction
+          </Link>
+          .
         </Typography>
         <Typography variant="subtitle1" gutterBottom>
           Qlik Sense Desktop
@@ -183,7 +188,7 @@ function SelectEngine({ info, children }) {
   );
 }
 
-function AppList({ info, glob }) {
+function AppList({ info, glob, treatAsDesktop }) {
   const [items, setItems] = useState();
   const [waiting, setWaiting] = useState(false);
 
@@ -191,11 +196,13 @@ function AppList({ info, glob }) {
     const t = setTimeout(() => {
       setWaiting(true);
     }, 750);
-    glob.getDocList().then(its => {
+
+    glob.getDocList().then((its) => {
       clearTimeout(t);
       setWaiting(false);
       setItems(its);
     });
+
     return () => {
       clearTimeout(t);
     };
@@ -209,14 +216,14 @@ function AppList({ info, glob }) {
       {waiting && <CircularProgress size={32} />}
       {items && items.length > 0 && (
         <List>
-          {items.map(li => (
+          {items.map((li) => (
             <ListItem
               button
               key={li.qDocId}
               component="a"
               href={`/dev/${window.location.search.replace(
                 info.engineUrl,
-                `${info.engineUrl}/app/${encodeURIComponent(li.qDocId)}`
+                `${info.engineUrl}/app/${encodeURIComponent(treatAsDesktop ? li.qDocName : li.qDocId)}`
               )}`}
             >
               <ListItemText primary={li.qTitle} secondary={li.qDocId} />
@@ -233,24 +240,23 @@ function AppList({ info, glob }) {
   );
 }
 
-const Err = ({ e: { message, hints } }) => {
-  return (
-    <>
-      <Typography variant="subtitle1" color="error" gutterBottom style={{ marginTop: '1rem' }}>
-        {message}
+const Err = ({ e: { message, hints } }) => (
+  <>
+    <Typography variant="subtitle1" color="error" gutterBottom style={{ marginTop: '1rem' }}>
+      {message}
+    </Typography>
+    {hints.map((hint) => (
+      <Typography key={hint} variant="body2">
+        {hint}
       </Typography>
-      {hints.map(hint => (
-        <Typography key={hint} variant="body2">
-          {hint}
-        </Typography>
-      ))}
-    </>
-  );
-};
+    ))}
+  </>
+);
 
 export default function Hub() {
   const [info, setInfo] = useState();
   const [glob, setGlobal] = useState();
+  const [treatAsDesktop, setTreatAsDesktop] = useState(false);
   const [err, setError] = useState();
   const steps = ['Connect to an engine', 'Select an app', 'Develop'];
   const [activeStep, setActiveStep] = useState(0);
@@ -260,7 +266,7 @@ export default function Hub() {
   };
 
   useEffect(() => {
-    connectionInfo.then(i => {
+    connectionInfo.then((i) => {
       if (i.enigma.appId) {
         window.location.href = `/dev/${window.location.search}`;
         return;
@@ -281,8 +287,27 @@ export default function Hub() {
       return;
     }
     connect()
-      .then(g => {
+      .then((g) => {
+        if (g.session) {
+          g.session.on('notification:OnAuthenticationInformation', (e) => {
+            if (e.mustAuthenticate) {
+              setError({
+                message: 'Could not authenticate.',
+                hints: [
+                  `In your virtual proxy advanced settings in the QMC, make sure to whitelist ${window.location.host}, ensure "Has secure attribute" is enabled and that "SameSite attribute" is set to "None".`,
+                ],
+              });
+              setGlobal(null);
+            }
+          });
+        }
+
         setGlobal(g);
+
+        if (!g.getDocList) {
+          return;
+        }
+
         setActiveStep(1);
         const conns = storage.get('connections') || [];
         const url = `${info.engineUrl}${
@@ -292,16 +317,23 @@ export default function Hub() {
           conns.push(url);
           storage.save('connections', conns);
         }
+        g.getConfiguration().then((c) => {
+          if (c.qFeatures && c.qFeatures.qIsDesktop) {
+            setTreatAsDesktop(true);
+          }
+        });
       })
-      .catch(e => {
+      .catch((e) => {
         const oops = {
           message: 'Something went wrong, check the devtools console',
           hints: [],
         };
         if (e.target instanceof WebSocket) {
           oops.message = `Connection failed to ${info.engineUrl}`;
-          if (!info.webIntegrationId) {
-            oops.hints.push('If you are connecting to QCS/QSEoK, make sure to provide a web-integration-id.');
+          if (/\.qlik[A-Za-z0-9-]+\.com/.test(info.engineUrl) && !info.webIntegrationId) {
+            oops.hints.push(
+              'If you are connecting to Qlik Cloud Services, make sure to provide a qlik-web-integration-id.'
+            );
           }
           setError(oops);
           return;
@@ -345,7 +377,11 @@ export default function Hub() {
         </ThemeProvider>
         <Box p={[2, 2]} m={2} bgcolor="background.paper" boxShadow={24} borderRadius="borderRadius">
           {glob ? (
-            <AppList info={info} glob={glob} />
+            glob.status === 401 ? (
+              <Typography variant="h5">Connecting...</Typography>
+            ) : (
+              <AppList info={info} glob={glob} treatAsDesktop={treatAsDesktop} />
+            )
           ) : (
             <SelectEngine info={info}>{err && <Err e={err} />}</SelectEngine>
           )}

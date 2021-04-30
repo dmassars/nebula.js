@@ -7,7 +7,7 @@
     "name": "<%= user %>",
     "email": "<%= email %>"
   },
-  "keywords": ["qlik", "nebula", "supernova"],
+  "keywords": ["qlik", "nebula", "stardust"],
   "files": ["dist"],
   "engines": {
     "node": ">=8"
@@ -18,6 +18,7 @@
     "build": "nebula build",
     "lint": "eslint src",
     "start": "nebula serve",
+    "sense": "nebula sense",
     "test:integration": "aw puppet --testExt '*.int.js' --glob 'test/integration/**/*.int.js'"
   },
   "devDependencies": {
@@ -25,12 +26,13 @@
     "@nebula.js/cli": "<%= nebulaVersion %>",
     "@nebula.js/cli-build": "<%= nebulaVersion %>",
     "@nebula.js/cli-serve": "<%= nebulaVersion %>",
+    "@nebula.js/cli-sense": "<%= nebulaVersion %>",
     "eslint": "5.12.1",
     "eslint-config-airbnb-base": "13.1.0",
     "eslint-plugin-import": "2.15.0",
     "eslint-plugin-mocha": "5.2.1"
   },
   "peerDependencies": {
-    "@nebula.js/supernova": "^0.x"
+    "@nebula.js/stardust": "^1.x"
   }
 }

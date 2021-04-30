@@ -1,31 +1,24 @@
-import React, { useCallback, useMemo, useState, useContext } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import { Divider, Grid, Checkbox, FormControlLabel } from '@material-ui/core';
 
-import useProperties from '@nebula.js/nucleus/src/hooks/useProperties';
+import usePropertiesById from '@nebula.js/nucleus/src/hooks/usePropertiesById';
 
 import Data from './property-panel/Data';
 import generateComponents from './AutoComponents';
 
-import AppContext from '../contexts/AppContext';
-
-import storageFn from '../storage';
-
-export default function Properties({ viz, sn, isTemp }) {
-  const [properties] = useProperties(viz.model);
-
-  const app = useContext(AppContext);
-  const storage = useMemo(() => storageFn(app), [app]);
+export default function Properties({ viz, sn, isTemp, storage }) {
+  const [properties, setProperties] = usePropertiesById(viz.id);
 
   const [isReadCacheEnabled, setReadCacheEnabled] = useState(storage.get('readFromCache') !== false);
 
-  const handleCacheChange = e => {
+  const handleCacheChange = (e) => {
     storage.save('readFromCache', e.target.checked);
     setReadCacheEnabled(e.target.checked);
   };
 
   const changed = useCallback(() => {
-    viz.model.setProperties(properties);
+    setProperties(properties);
   }, [viz, sn, properties]);
 
   if (!sn) {
@@ -57,7 +50,7 @@ export default function Properties({ viz, sn, isTemp }) {
           <Divider />
         </>
       )}
-      <Data properties={properties} model={viz.model} sn={sn} />
+      <Data properties={properties} setProperties={setProperties} sn={sn} />
       {generateComponents(properties, changed)}
     </div>
   );

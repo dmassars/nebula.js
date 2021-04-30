@@ -2,23 +2,23 @@ import type from './type';
 import { clearFromCache } from './load';
 
 export function semverSort(arr) {
-  const unversioned = arr.filter(v => v === 'undefined');
+  const unversioned = arr.filter((v) => v === 'undefined');
   return [
     ...unversioned,
     ...arr
-      .filter(v => v !== 'undefined')
-      .map(v => v.split('.').map(n => parseInt(n, 10)))
+      .filter((v) => v !== 'undefined')
+      .map((v) => v.split('.').map((n) => parseInt(n, 10)))
       .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2])
-      .map(n => n.join('.')),
+      .map((n) => n.join('.')),
   ];
 }
 
-export function typeCollection(name, corona) {
+export function typeCollection(name, halo) {
   const versions = {};
   let sortedVersions = null;
 
   return {
-    get: version => versions[version],
+    get: (version) => versions[version],
     register: (version, opts) => {
       if (versions[version]) {
         throw new Error(`Supernova '${name}@${version}' already registered.`);
@@ -29,12 +29,12 @@ export function typeCollection(name, corona) {
           name,
           version,
         },
-        corona,
+        halo,
         opts
       );
       sortedVersions = null;
     },
-    getMatchingVersionFromProperties: propertyVersion => {
+    getMatchingVersionFromProperties: (propertyVersion) => {
       if (!sortedVersions) {
         sortedVersions = semverSort(Object.keys(versions));
       }
@@ -50,7 +50,7 @@ export function typeCollection(name, corona) {
   };
 }
 
-export function create({ corona, parent }) {
+export function create({ halo, parent }) {
   const tc = {};
 
   const p = parent || {
@@ -60,7 +60,7 @@ export function create({ corona, parent }) {
   return {
     register: (typeInfo, opts) => {
       if (!tc[typeInfo.name]) {
-        tc[typeInfo.name] = typeCollection(typeInfo.name, corona);
+        tc[typeInfo.name] = typeCollection(typeInfo.name, halo);
       }
       tc[typeInfo.name].register(typeInfo.version, opts);
     },
@@ -77,7 +77,7 @@ export function create({ corona, parent }) {
       }
       return tc[name].get(version) || p.get(typeInfo);
     },
-    clearFromCache: name => {
+    clearFromCache: (name) => {
       if (tc[name]) {
         tc[name] = undefined;
       }

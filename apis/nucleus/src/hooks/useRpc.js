@@ -1,12 +1,11 @@
 import { useReducer, useEffect } from 'react';
-import { useModelChangedStore, useRpcResultStore, useRpcRequestStore } from '../stores/modelStore';
+import { useModelChangedStore, useRpcResultStore, useRpcRequestStore } from '../stores/model-store';
 
 // eslint-disable-next-line no-unused-vars
-const sleep = delay => {
-  return new Promise(resolve => {
+const sleep = (delay) =>
+  new Promise((resolve) => {
     setTimeout(resolve, delay);
   });
-};
 
 const rpcReducer = (state, action) => {
   const { rpcResultStore, key, method } = action;
@@ -40,6 +39,7 @@ const rpcReducer = (state, action) => {
     }
     case 'CANCELLED': {
       newState = {
+        ...state,
         invalid: true,
         valid: false,
         validating: false,
@@ -78,7 +78,7 @@ export default function useRpc(model, method) {
     }
   }
 
-  const call = async skipRetry => {
+  const call = async (skipRetry) => {
     let cache = rpcShared[method];
     if (!cache || (cache && cache.rpcRetry)) {
       const rpc = model[method]();

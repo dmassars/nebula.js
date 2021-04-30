@@ -1,4 +1,5 @@
 import extend from 'extend';
+import generateScales from './theme-scale-generator';
 
 /**
  * Creates the follwing array of paths
@@ -121,7 +122,7 @@ export default function styleResolver(basePath, themeJSON) {
  * @param {Object} - variables
  */
 function resolveVariables(objTree, variables) {
-  Object.keys(objTree).forEach(key => {
+  Object.keys(objTree).forEach((key) => {
     if (typeof objTree[key] === 'object' && objTree[key] !== null) {
       resolveVariables(objTree[key], variables);
     } else if (typeof objTree[key] === 'string' && objTree[key].charAt(0) === '@') {
@@ -131,11 +132,15 @@ function resolveVariables(objTree, variables) {
   });
 }
 
-styleResolver.resolveRawTheme = raw => {
+styleResolver.resolveRawTheme = (raw) => {
   // TODO - validate format
-  // TODO - generate class-pyramid
   const c = extend(true, {}, raw);
   resolveVariables(c, c._variables); // eslint-disable-line
+
+  // generate class-pyramid
+  if (c.scales) {
+    generateScales(c.scales, c.dataColors && c.dataColors.nullColor);
+  }
 
   return c;
 };

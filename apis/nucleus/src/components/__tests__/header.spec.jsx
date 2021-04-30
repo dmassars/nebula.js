@@ -1,21 +1,38 @@
 import React from 'react';
 import { create, act } from 'react-test-renderer';
-import { Typography } from '@material-ui/core';
+import { makeStyles, Grid, Typography } from '@material-ui/core';
 
-const SelectionToolbar = () => 'selectiontoolbar';
-
-const [{ default: Header }] = aw.mock(
-  [[require.resolve('../SelectionToolbar'), () => SelectionToolbar]],
-  ['../Header']
-);
+const Popover = (props) => props.children;
+const ActionsToolbar = () => 'ActionsToolbar';
 
 describe('<Header />', () => {
   let sandbox;
   let renderer;
   let render;
-  beforeEach(() => {
+  let Header;
+  let rect;
+  before(() => {
     sandbox = sinon.createSandbox();
-    render = async (layout, sn) => {
+    rect = { width: 900 };
+    [{ default: Header }] = aw.mock(
+      [
+        [require.resolve('../ActionsToolbar'), () => ActionsToolbar],
+        [require.resolve('../../hooks/useRect'), () => () => [() => {}, rect]],
+        [
+          require.resolve('@material-ui/core'),
+          () => ({
+            makeStyles,
+            Grid,
+            Typography,
+            Popover,
+          }),
+        ],
+      ],
+      ['../Header']
+    );
+  });
+  beforeEach(() => {
+    render = async (layout = {}, sn = { component: {}, selectionToolbar: {} }) => {
       await act(async () => {
         renderer = create(<Header layout={layout} sn={sn} />);
       });
@@ -44,7 +61,7 @@ describe('<Header />', () => {
   });
   it('should render selection toolbar', async () => {
     await render({ qSelectionInfo: { qInSelections: true } }, { component: {}, selectionToolbar: {} });
-    const types = renderer.root.findAllByType(SelectionToolbar);
+    const types = renderer.root.findAllByType(ActionsToolbar);
     expect(types).to.have.length(1);
   });
 });

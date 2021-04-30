@@ -6,7 +6,7 @@ import {
   objectSelectionsStore,
   modalObjectStore,
   appModalStore,
-} from '../stores/selectionsStore';
+} from '../stores/selections-store';
 
 function createAppSelections({ app, currentSelectionsLayout, navState }) {
   const key = `${app.id}`;
@@ -15,7 +15,7 @@ function createAppSelections({ app, currentSelectionsLayout, navState }) {
     const model = modalObjectStore.get(key);
     if (model) {
       await model.endSelections(accept);
-      modalObjectStore.set(key, undefined);
+      modalObjectStore.clear(key);
       const objectSelections = objectSelectionsStore.get(model.id);
       objectSelections.emit('deactivated');
     }
@@ -34,7 +34,7 @@ function createAppSelections({ app, currentSelectionsLayout, navState }) {
     modalObjectStore.set(key, model);
 
     const p = Array.isArray(path) ? path : [path];
-    const beginSelections = async skipRetry => {
+    const beginSelections = async (skipRetry) => {
       try {
         await model.beginSelections(p);
         modalObjectStore.set(key, model); // We have a modal
@@ -43,7 +43,7 @@ function createAppSelections({ app, currentSelectionsLayout, navState }) {
           await app.abortModal(accept);
           beginSelections(true);
         } else {
-          modalObjectStore.set(key, undefined); // No modal
+          modalObjectStore.clear(key); // No modal
         }
       }
     };
@@ -59,7 +59,6 @@ function createAppSelections({ app, currentSelectionsLayout, navState }) {
 
   /**
    * @class
-   * @hideconstructor
    * @alias AppSelections
    */
   const appSelections = {
@@ -70,13 +69,6 @@ function createAppSelections({ app, currentSelectionsLayout, navState }) {
     isModal(object) {
       // TODO check model state
       return object ? modalObjectStore.get(key) === object : !!modalObjectStore.get(key);
-    },
-    async abortModal(accept = true) {
-      if (!modalObjectStore.get(key)) {
-        return;
-      }
-      await app.abortModal(accept);
-      modalObjectStore.set(key, undefined);
     },
     canGoForward() {
       return navState.canGoForward;
@@ -100,7 +92,7 @@ function createAppSelections({ app, currentSelectionsLayout, navState }) {
       return appModal.end().then(() => app.clearAll());
     },
     clearField(field, state = '$') {
-      return appModal.end().then(() => app.getField(field, state).then(f => f.clear()));
+      return appModal.end().then(() => app.getField(field, state).then((f) => f.clear()));
     },
   };
   return appSelections;
@@ -119,6 +111,7 @@ export default function useAppSelections(app) {
     if (!app || !currentSelectionsModel || !currentSelectionsLayout || !navState || appSelections) return;
     appSelections = createAppSelections({ app, currentSelectionsLayout, navState });
     appSelectionsStore.set(key, appSelections);
+    appSelectionsStore.dispatch(true);
   }, [app, currentSelectionsModel, currentSelectionsLayout, navState]);
 
   return [appSelections, navState];

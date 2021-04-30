@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useContext } from 'react';
-import useProperties from '@nebula.js/nucleus/src/hooks/useProperties';
+import React, { useEffect, useContext } from 'react';
 
 import { Grid } from '@material-ui/core';
+
+import usePropertiesById from '@nebula.js/nucleus/src/hooks/usePropertiesById';
 
 import Cell from './Cell';
 import NebulaContext from '../contexts/NebulaContext';
@@ -9,9 +10,8 @@ import VizContext from '../contexts/VizContext';
 
 export default function Stage({ info, storage, uid }) {
   const nebbie = useContext(NebulaContext);
-  const [model, setModel] = useState(null);
-  const [properties] = useProperties(model);
-  const { setActiveViz } = useContext(VizContext);
+  const { activeViz, setActiveViz } = useContext(VizContext);
+  const [properties] = usePropertiesById(uid);
 
   useEffect(() => {
     if (!uid) {
@@ -27,12 +27,11 @@ export default function Stage({ info, storage, uid }) {
         },
       },
     });
-    res.then(v => {
-      setModel(v.model);
+    res.then((v) => {
       setActiveViz(v);
     });
     return () => {
-      res.then(v => v.destroy());
+      res.then((v) => v.destroy());
     };
   }, [uid]);
 
@@ -41,9 +40,7 @@ export default function Stage({ info, storage, uid }) {
     storage.props(info.supernova.name, properties);
   }, [properties]);
 
-  if (!model) {
-    return null;
-  }
+  if (!activeViz || activeViz.id !== uid) return null;
 
   return (
     <Grid
@@ -55,7 +52,7 @@ export default function Stage({ info, storage, uid }) {
       }}
     >
       <Grid item xs>
-        <Cell id={model.id} />
+        <Cell id={uid} />
       </Grid>
     </Grid>
   );

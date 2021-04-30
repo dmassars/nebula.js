@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs-extra');
 
 const rollup = require('rollup');
-const nodeResolve = require('@rollup/plugin-node-resolve');
+const { nodeResolve } = require('@rollup/plugin-node-resolve');
 const common = require('@rollup/plugin-commonjs');
 const babel = require('rollup-plugin-babel');
 const { terser } = require('rollup-plugin-terser');
@@ -12,17 +12,19 @@ async function build(argv) {
 
   const supernovaPkg = require(path.resolve(cwd, 'package.json')); // eslint-disable-line
 
-  const extName = supernovaPkg.name.replace(/\//, '-').replace('@', '');
+  let extName = supernovaPkg.name.split('/').reverse()[0]; // replace(/\//, '-').replace('@', '');
 
   const { main } = supernovaPkg;
 
-  const qextTargetDir = path.resolve(cwd, 'dist-ext');
+  if (extName === main) {
+    extName = extName.replace(/\.js$/, '-ext.js');
+  }
+
+  const targetDir = argv.output || 'dist';
+  const targetFile = 'ext';
+  const qextLegacyTargetDir = path.resolve(cwd, targetDir);
   const qextFileName = path.resolve(cwd, `${extName}.qext`);
   const qextFileNameJs = qextFileName.replace(/\.qext$/, '.js');
-
-  fs.removeSync(qextTargetDir);
-  fs.removeSync(qextFileName);
-  fs.removeSync(qextFileNameJs);
 
   const extDefinition = argv.ext ? path.resolve(argv.ext) : undefined;
 
@@ -47,14 +49,19 @@ async function build(argv) {
       encoding: 'utf8',
     });
     qextjs = qextjs.replace('{{DIST}}', `./${main.replace(/^[./]*/, '').replace(/\.js$/, '')}`);
+    qextjs = qextjs.replace('{{EXT}}', `./${targetDir}/${targetFile}`);
 
     fs.writeFileSync(qextFileName, JSON.stringify(contents, null, 2));
     fs.writeFileSync(qextFileNameJs, qextjs);
 
     if (supernovaPkg.files) {
-      [extDefinition ? path.basename(qextTargetDir) : false, path.basename(qextFileNameJs), path.basename(qextFileName)]
+      [
+        extDefinition ? path.basename(qextLegacyTargetDir) : false,
+        path.basename(qextFileNameJs),
+        path.basename(qextFileName),
+      ]
         .filter(Boolean)
-        .forEach(f => {
+        .forEach((f) => {
           if (!supernovaPkg.files.includes(f)) {
             console.warn(`  \x1b[33mwarn:\x1b[0m \x1b[36m${f}\x1b[0m should be included in package.json 'files' array`);
           }
@@ -93,7 +100,7 @@ async function build(argv) {
     });
 
     await bundle.write({
-      file: path.resolve(qextTargetDir, 'ext.js'),
+      file: path.resolve(qextLegacyTargetDir, `${targetFile}.js`),
       format: 'amd',
       sourcemap: argv.ext && argv.sourcemap,
     });

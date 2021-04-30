@@ -8,7 +8,8 @@ const rollup = require('rollup');
 const babel = require('rollup-plugin-babel');
 const postcss = require('rollup-plugin-postcss');
 const replace = require('@rollup/plugin-replace');
-const nodeResolve = require('@rollup/plugin-node-resolve');
+const json = require('@rollup/plugin-json');
+const { nodeResolve } = require('@rollup/plugin-node-resolve');
 const commonjs = require('@rollup/plugin-commonjs');
 
 const babelPreset = require('@babel/preset-env');
@@ -17,13 +18,30 @@ const { terser } = require('rollup-plugin-terser');
 
 const initConfig = require('./init-config');
 
-const config = ({ mode = 'production', format = 'umd', cwd = process.cwd() } = {}) => {
-  const pkg = require(path.resolve(cwd, 'package.json')); // eslint-disable-line
+const config = ({
+  mode = 'production',
+  format = 'umd',
+  cwd = process.cwd(),
+  argv = { sourcemap: true },
+  core,
+} = {}) => {
+  const CWD = argv.cwd || cwd;
+  let dir = CWD;
+  let pkg = require(path.resolve(CWD, 'package.json')); // eslint-disable-line
+  const corePkg = core ? require(path.resolve(core, 'package.json')) : null; // eslint-disable-line
   const { name, version, license, author } = pkg;
+  const { sourcemap } = argv;
+
+  if (corePkg) {
+    pkg = corePkg;
+    dir = core;
+  }
 
   if (format === 'esm' && !pkg.module) {
     return false;
   }
+
+  const fileTarget = format === 'esm' ? pkg.module : pkg.main;
 
   const auth = typeof author === 'object' ? `${author.name} <${author.email}>` : author || '';
   const moduleName = name.split('/').reverse()[0];
@@ -35,20 +53,19 @@ const config = ({ mode = 'production', format = 'umd', cwd = process.cwd() } = {
 */
 `;
 
-  // all peers should be externals for esm bundle
   const peers = pkg.peerDependencies || {};
-  const external = format === 'esm' ? Object.keys(peers) : [];
+  const external = Object.keys(peers);
 
-  // supernova should always be external
-  if (!peers['@nebula.js/supernova']) {
-    console.warn('@nebula.js/supernova should be specified as a peer dependency');
-  } else if (external.indexOf('@nebula.js/supernova') === -1) {
-    external.push('@nebula.js/supernova');
+  // stardust should always be external
+  if (!peers['@nebula.js/stardust']) {
+    console.warn('@nebula.js/stardust should be specified as a peer dependency');
+  } else if (external.indexOf('@nebula.js/stardust') === -1) {
+    external.push('@nebula.js/stardust');
   }
 
   return {
     input: {
-      input: path.resolve(cwd, 'src/index'),
+      input: path.resolve(CWD, 'src/index'),
       external,
       plugins: [
         replace({
@@ -56,6 +73,7 @@ const config = ({ mode = 'production', format = 'umd', cwd = process.cwd() } = {
         }),
         nodeResolve(),
         commonjs(),
+        json(),
         babel({
           babelrc: false,
           presets: [
@@ -85,20 +103,17 @@ const config = ({ mode = 'production', format = 'umd', cwd = process.cwd() } = {
     output: {
       banner,
       format,
-      file: format === 'esm' && pkg.module ? pkg.module : pkg.main,
+      file: path.resolve(dir, fileTarget), // fileTargetformat === 'esm' && pkg.module ? pkg.module : pkg.main,
       name: moduleName,
-      sourcemap: true,
+      sourcemap,
       globals: {
-        '@nebula.js/supernova': 'supernova',
-      },
-      output: {
-        preamble: banner,
+        '@nebula.js/stardust': 'stardust',
       },
     },
   };
 };
 
-const minified = async argv => {
+const minified = async (argv) => {
   const c = config({
     mode: 'production',
     format: 'umd',
@@ -108,11 +123,12 @@ const minified = async argv => {
   await bundle.write(c.output);
 };
 
-const esm = async argv => {
+const esm = async (argv, core) => {
   const c = config({
     mode: 'development',
     format: 'esm',
     argv,
+    core,
   });
   if (!c) {
     return Promise.resolve();
@@ -134,7 +150,7 @@ function clearScreen(msg) {
   }
 }
 
-const watch = async argv => {
+const watch = async (argv) => {
   const c = config({
     mode: 'development',
     format: 'umd',
@@ -160,7 +176,7 @@ const watch = async argv => {
   });
 
   return new Promise((resolve, reject) => {
-    watcher.on('event', event => {
+    watcher.on('event', (event) => {
       switch (event.code) {
         case 'BUNDLE_START':
           hasWarnings = false;
@@ -204,6 +220,11 @@ async function build(argv = {}) {
     return watch(buildConfig);
   }
   await minified(buildConfig);
+
+  if (argv.core) {
+    const core = path.resolve(process.cwd(), argv.core);
+    await esm(buildConfig, core);
+  }
   return esm(buildConfig);
 }
 

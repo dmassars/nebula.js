@@ -1,5 +1,5 @@
 describe('interaction', () => {
-  const content = '.nebulajs-sn[data-render-count="1"]';
+  const content = '.njs-viz[data-render-count="1"]';
   it('should select two bars', async () => {
     const app = encodeURIComponent(process.env.APP_ID || '/apps/ctrl00.qvf');
     await page.goto(`${process.env.BASE_URL}/render/?app=${app}&cols=Alpha,=5+avg(Expression1)`);
@@ -11,9 +11,9 @@ describe('interaction', () => {
     await page.waitForSelector('button[title="Confirm selection"]:not([disabled])', { visible: true });
     await page.click('button[title="Confirm selection"]');
 
-    await page.waitForFunction(selector => document.querySelectorAll(selector).length === 2, {}, 'rect[data-label]');
+    await page.waitForFunction((selector) => document.querySelectorAll(selector).length === 2, {}, 'rect[data-label]');
 
-    const rects = await page.$$eval('rect[data-label]', sel => sel.map(r => r.getAttribute('data-label')));
+    const rects = await page.$$eval('rect[data-label]', (sel) => sel.map((r) => r.getAttribute('data-label')));
     expect(rects).to.eql(['K', 'S']);
   });
 });

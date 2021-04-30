@@ -7,7 +7,7 @@ import { makeStyles } from '@nebula.js/ui/theme';
 import Lock from '@nebula.js/ui/icons/lock';
 import Tick from '@nebula.js/ui/icons/tick';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
   row: {
     flexWrap: 'nowrap',
     borderBottom: `1px solid ${theme.palette.divider}`,
@@ -58,7 +58,7 @@ export default function Row({ index, style, data }) {
   const { onClick, pages } = data;
   let cell;
   if (pages) {
-    const page = pages.filter(p => p.qArea.qTop <= index && index < p.qArea.qTop + p.qArea.qHeight)[0];
+    const page = pages.filter((p) => p.qArea.qTop <= index && index < p.qArea.qTop + p.qArea.qHeight)[0];
     if (page) {
       const area = page.qArea;
       if (index >= area.qTop && index < area.qTop + area.qHeight) {
@@ -118,7 +118,7 @@ export default function Row({ index, style, data }) {
       tabIndex={0}
       data-n={cell && cell.qElemNumber}
     >
-      <Grid item style={{ minWidth: 0, flexGrow: 1 }} className={classes.cell}>
+      <Grid item style={{ minWidth: 0, flexGrow: 1 }} className={classes.cell} title={`${label}`}>
         {ranges.length === 0 ? (
           <Typography component="span" noWrap color="inherit">{`${label}`}</Typography>
         ) : (

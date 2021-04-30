@@ -1,25 +1,64 @@
 import React, { useEffect, useState } from 'react';
 
-import { Grid, Typography } from '@material-ui/core';
+import { makeStyles, Grid, Typography } from '@material-ui/core';
+import ActionsToolbar from './ActionsToolbar';
+import useRect from '../hooks/useRect';
 
-import SelectionToolbarWithDefault from './SelectionToolbar';
+const ITEM_WIDTH = 32;
+const ITEM_SPACING = 4;
+const DIVIDER = 1;
+const NUMBER_OF_ITEMS = 6;
+const MIN_WIDTH = (ITEM_WIDTH + ITEM_SPACING) * NUMBER_OF_ITEMS + DIVIDER + ITEM_SPACING;
 
-const Header = ({ layout, sn }) => {
-  const showTitle = layout && layout.showTitles && !!layout.title;
-  const showSubtitle = layout && layout.showTitles && !!layout.subtitle;
-  const showInSelectionActions = sn && layout && layout.qSelectionInfo && layout.qSelectionInfo.qInSelections;
+const useStyles = makeStyles((theme) => ({
+  containerStyle: {
+    flexGrow: 0,
+  },
+  containerTitleStyle: {
+    paddingBottom: theme.spacing(1),
+  },
+}));
 
-  const [items, setItems] = useState([]);
+const Header = ({ layout, sn, anchorEl, hovering }) => {
+  const showTitle = layout.showTitles && !!layout.title;
+  const showSubtitle = layout.showTitles && !!layout.subtitle;
+  const showInSelectionActions = layout.qSelectionInfo && layout.qSelectionInfo.qInSelections;
+  const [actions, setActions] = useState([]);
+  const { containerStyle, containerTitleStyle } = useStyles();
+  const [containerRef, containerRect] = useRect();
+  const [shouldShowPopoverToolbar, setShouldShowPopoverToolbar] = useState(false);
 
   useEffect(() => {
     if (!sn || !sn.component || !sn.component.isHooked) {
       return;
     }
-    sn.component.observeActions(actions => setItems(actions));
+    sn.component.observeActions((a) => {
+      setActions([...a, ...((sn && sn.selectionToolbar && sn.selectionToolbar.items) || [])]);
+    });
   }, [sn]);
 
+  useEffect(() => {
+    if (!containerRect) return;
+    const { width } = containerRect;
+    setShouldShowPopoverToolbar(width < MIN_WIDTH);
+  }, [containerRect]);
+
+  const showTitles = showTitle || showSubtitle;
+  const classes = [containerStyle, ...(showTitles ? [containerTitleStyle] : [])];
+  const showPopoverToolbar = (hovering || showInSelectionActions) && (shouldShowPopoverToolbar || !showTitles);
+  const showToolbar = showTitles && !showPopoverToolbar && !shouldShowPopoverToolbar;
+
+  const Toolbar = (
+    <ActionsToolbar
+      show={showToolbar}
+      selections={{ show: showInSelectionActions, api: sn.component.selections }}
+      actions={actions}
+      popover={{ show: showPopoverToolbar, anchorEl }}
+    />
+  );
+
   return (
-    <Grid item container wrap="nowrap" style={{ flexGrow: 0 }}>
+    <Grid ref={containerRef} item container wrap="nowrap" className={classes.join(' ')}>
       <Grid item zeroMinWidth xs>
         <Grid container wrap="nowrap" direction="column">
           {showTitle && (
@@ -34,16 +73,7 @@ const Header = ({ layout, sn }) => {
           )}
         </Grid>
       </Grid>
-      <Grid item style={{ whiteSpace: 'nowrap', minHeight: '32px' }}>
-        {showInSelectionActions && (
-          <SelectionToolbarWithDefault
-            inline
-            layout={layout}
-            api={sn.component.selections}
-            xItems={[...items, ...(sn.selectionToolbar.items || [])]}
-          />
-        )}
-      </Grid>
+      <Grid item>{Toolbar}</Grid>
     </Grid>
   );
 };

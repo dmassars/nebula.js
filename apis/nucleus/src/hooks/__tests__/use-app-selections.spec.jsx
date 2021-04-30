@@ -47,6 +47,7 @@ describe('useAppSelections', () => {
     modalObjectStore = {
       get: sandbox.stub(),
       set: sandbox.spy(),
+      clear: sandbox.spy(),
     };
     [{ default: useAppSelections }] = aw.mock(
       [
@@ -55,13 +56,19 @@ describe('useAppSelections', () => {
           () => () => [navState, currentSelectionsModel, currentSelectionsLayout],
         ],
         [
-          require.resolve('../../stores/selectionsStore'),
+          require.resolve('../../stores/selections-store'),
           () => ({
             useAppSelectionsStore: () => [
               {
                 get: () => appSel,
                 set: (k, v) => {
                   appSel = v;
+                },
+                dispatch: async (b) => {
+                  if (!b) return;
+                  await act(async () => {
+                    renderer.update(<TestHook ref={ref} hook={useAppSelections} hookProps={[app]} />);
+                  });
                 },
               },
             ],
@@ -103,19 +110,16 @@ describe('useAppSelections', () => {
 
   it('should create app selections', async () => {
     await render();
-    await render();
+
     expect(ref.current.result[0]).to.equal(appSel);
   });
 
   it('should retry failed beginSelections for error code 6003', async () => {
     await render();
-    await render();
-
     const res = Promise.resolve();
     // eslint-disable-next-line prefer-promise-reject-errors
     beginSelections.onFirstCall().returns(Promise.reject({ code: 6003 }));
     beginSelections.onSecondCall().returns(res);
-    sandbox.stub(appSel, 'abortModal').returns(Promise.resolve());
     await appModal.begin(object);
     await res;
 
@@ -124,7 +128,6 @@ describe('useAppSelections', () => {
 
   it('should not retry failed beginSelections', async () => {
     await render();
-    await render();
 
     // eslint-disable-next-line prefer-promise-reject-errors
     beginSelections.onFirstCall().returns(Promise.reject({ code: 9999 }));
@@ -132,7 +135,6 @@ describe('useAppSelections', () => {
   });
 
   it('should is in modal', async () => {
-    await render();
     await render();
 
     modalObjectStore.get.returns(false);
@@ -143,7 +145,6 @@ describe('useAppSelections', () => {
 
   it('should is modal', async () => {
     await render();
-    await render();
     const obj = {};
     modalObjectStore.get.returns(obj);
     expect(ref.current.result[0].isModal(obj)).to.equal(true);
@@ -151,18 +152,7 @@ describe('useAppSelections', () => {
     expect(ref.current.result[0].isModal()).to.equal(true);
   });
 
-  it('should abort modal', async () => {
-    app.abortModal.reset();
-    await render();
-    await render();
-
-    modalObjectStore.get.returns(true);
-    await ref.current.result[0].abortModal();
-    expect(app.abortModal.callCount).to.equal(1);
-  });
-
   it('can go forward', async () => {
-    await render();
     await render();
 
     const res = await ref.current.result[0].canGoForward();
@@ -171,14 +161,11 @@ describe('useAppSelections', () => {
 
   it('can go back', async () => {
     await render();
-    await render();
-
     const res = await ref.current.result[0].canGoBack();
     expect(res).to.equal(true);
   });
 
   it('can clear', async () => {
-    await render();
     await render();
 
     const res = await ref.current.result[0].canClear();
@@ -187,14 +174,12 @@ describe('useAppSelections', () => {
 
   it('returns current selections layout', async () => {
     await render();
-    await render();
 
     const res = await ref.current.result[0].layout();
     expect(res).to.equal(currentSelectionsLayout);
   });
 
   it('forward', async () => {
-    await render();
     await render();
     sandbox.stub(appModal, 'end').returns(Promise.resolve());
     await ref.current.result[0].forward();
@@ -203,7 +188,6 @@ describe('useAppSelections', () => {
 
   it('back', async () => {
     await render();
-    await render();
     sandbox.stub(appModal, 'end').returns(Promise.resolve());
     await ref.current.result[0].back();
     expect(app.back.callCount).to.equal(1);
@@ -211,14 +195,12 @@ describe('useAppSelections', () => {
 
   it('clear', async () => {
     await render();
-    await render();
     sandbox.stub(appModal, 'end').returns(Promise.resolve());
     await ref.current.result[0].clear();
     expect(app.clearAll.callCount).to.equal(1);
   });
 
   it('clear field', async () => {
-    await render();
     await render();
     sandbox.stub(appModal, 'end').returns(Promise.resolve());
     const clear = sandbox.spy();

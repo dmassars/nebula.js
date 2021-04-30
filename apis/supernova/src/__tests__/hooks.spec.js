@@ -27,6 +27,7 @@ import {
   useStaleLayout,
   useAppLayout,
   useTranslator,
+  usePlugins,
   useConstraints,
   useOptions,
   onTakeSnapshot,
@@ -38,7 +39,7 @@ describe('hooks', () => {
   let DEV;
   let frame;
   before(() => {
-    frame = () => new Promise(resolve => setTimeout(resolve));
+    frame = () => new Promise((resolve) => setTimeout(resolve));
     sandbox = sinon.createSandbox();
     DEV = global.__NEBULA_DEV__;
     global.__NEBULA_DEV__ = true;
@@ -47,12 +48,12 @@ describe('hooks', () => {
     // so if an error occurs we won't know it.
     // we therefore stub the console.error method and throw the error
     // so that a test fails properly
-    const err = e => {
+    const err = (e) => {
       throw e;
     };
     sandbox.stub(console, 'error').callsFake(err);
     if (!global.requestAnimationFrame) {
-      global.requestAnimationFrame = cb => setTimeout(cb, 20);
+      global.requestAnimationFrame = (cb) => setTimeout(cb, 20);
       global.cancelAnimationFrame = clearTimeout;
     }
   });
@@ -83,7 +84,7 @@ describe('hooks', () => {
   it('should throw when hook is used outside method context', () => {
     const fn = () => useState(0);
 
-    expect(fn).to.throw('Invalid nebula hook call. Hooks can only be called inside a supernova component.');
+    expect(fn).to.throw('Invalid stardust hook call. Hooks can only be called inside a visualization component.');
   });
 
   it('should throw when hooks are used outside top level of method context', async () => {
@@ -102,7 +103,7 @@ describe('hooks', () => {
     run(c);
     clock.tick(60);
     expect(err.args[0][0].message).to.equal(
-      'Invalid nebula hook call. Hooks can only be called inside a supernova component.'
+      'Invalid stardust hook call. Hooks can only be called inside a visualization component.'
     );
   });
 
@@ -114,7 +115,7 @@ describe('hooks', () => {
           list: [{ teardown: spy }],
           pendingEffects: ['a'],
           pendingLayoutEffects: ['a'],
-          actions: ['a'],
+          actions: { list: [] },
         },
       };
 
@@ -126,18 +127,18 @@ describe('hooks', () => {
         list: [],
         pendingEffects: [],
         pendingLayoutEffects: [],
-        actions: [],
-        dispatchActions: null,
+        actions: null,
         imperativeHandle: null,
+        resizer: null,
       });
+
+      expect(c.__actionsDispatch).to.eql(null);
     });
   });
 
   describe('runSnaps', () => {
     it('should run snaps hooks', async () => {
-      const take1 = layout => {
-        return Promise.resolve({ take1: 'yes', ...layout });
-      };
+      const take1 = (layout) => Promise.resolve({ take1: 'yes', ...layout });
 
       c = {
         __hooks: {
@@ -217,7 +218,7 @@ describe('hooks', () => {
 
       run(c);
       expect(countValue).to.equal(7);
-      setter(prev => prev + 2);
+      setter((prev) => prev + 2);
       await frame();
       expect(countValue).to.equal(9);
     });
@@ -294,7 +295,7 @@ describe('hooks', () => {
       c = {};
       initiate(c);
       sandbox.useFakeTimers();
-      global.requestAnimationFrame = cb => setTimeout(cb, 20);
+      global.requestAnimationFrame = (cb) => setTimeout(cb, 20);
       clock = sandbox.clock;
     });
     afterEach(() => {
@@ -353,9 +354,7 @@ describe('hooks', () => {
 
     it('should cleanup previous', async () => {
       const spy = sandbox.spy();
-      const f = () => {
-        return spy;
-      };
+      const f = () => spy;
       c.fn = () => {
         useEffect(f);
       };
@@ -380,7 +379,7 @@ describe('hooks', () => {
     it('should resolve run-phase when pending promises are resolved', async () => {
       let reject;
       let resolve;
-      const prom1 = new Promise(r => {
+      const prom1 = new Promise((r) => {
         resolve = r;
       });
       const prom2 = new Promise((r, j) => {
@@ -506,6 +505,7 @@ describe('hooks', () => {
         label: 'meh',
         active: true,
         disabled: true,
+        hidden: true,
       });
       c.fn = () => {
         useAction(stub, []);
@@ -518,24 +518,47 @@ describe('hooks', () => {
       expect(ref.active).to.eql(true);
       expect(ref.getSvgIconShape()).to.eql('ic');
       expect(ref.disabled).to.eql(true);
+      expect(ref.hidden).to.eql(true);
       expect(ref.label).to.eql('meh');
     });
 
-    it('should dispatch actions', async () => {
+    it('should observe actions before init ', async () => {
+      const spy = sandbox.spy();
+
+      const unitiatedComponent = {};
+
+      observeActions(unitiatedComponent, spy);
+      expect(unitiatedComponent.__actionsDispatch).to.eql(spy);
+    });
+
+    it('should dispatch actions immediately', async () => {
+      const spy = sandbox.spy();
+
+      observeActions(c, spy);
+      expect(spy.callCount).to.eql(1);
+
+      const actions = spy.getCall(0).args[0];
+      expect(actions).to.eql([]);
+    });
+
+    it('should dispatch actions only once after initial', async () => {
       const spy = sandbox.spy();
       c.fn = () => {
         useAction(() => ({ key: 'nyckel' }), []);
+        useAction(() => ({ key: 'nyckel2' }), []);
+        useAction(() => ({ key: 'nyckel3' }), []);
       };
 
       observeActions(c, spy);
       expect(spy.callCount).to.eql(1);
 
       run(c);
+      run(c);
       expect(spy.callCount).to.eql(2);
 
       const actions = spy.getCall(1).args[0];
 
-      expect(actions[0].key).to.eql('nyckel');
+      expect(actions.map((a) => a.key)).to.eql(['nyckel', 'nyckel2', 'nyckel3']);
     });
   });
 
@@ -676,7 +699,7 @@ describe('hooks', () => {
           getBoundingClientRect: sandbox.stub(),
         };
 
-        const err = e => {
+        const err = (e) => {
           throw e;
         };
         sandbox.stub(console, 'error').callsFake(err);
@@ -702,16 +725,20 @@ describe('hooks', () => {
       it('should update rect when scheduled', async () => {
         element.getBoundingClientRect.returns({ left: 1, top: 2, width: 3, height: 4 });
         let r;
+        let r2;
         c.fn = () => {
           r = useRect();
+          r2 = useRect();
         };
         run(c);
         expect(r).to.eql({ left: 1, top: 2, width: 3, height: 4 });
+        expect(r2).to.eql({ left: 1, top: 2, width: 3, height: 4 });
 
         element.getBoundingClientRect.returns({ left: 1, top: 2, width: 3, height: 5 });
         updateRectOnNextRun(c);
         await run(c);
         expect(r).to.eql({ left: 1, top: 2, width: 3, height: 5 });
+        expect(r2).to.eql({ left: 1, top: 2, width: 3, height: 5 });
       });
     });
   });
@@ -727,6 +754,7 @@ describe('hooks', () => {
         element: 'element',
         theme: 'theme',
         translator: 'translator',
+        plugins: 'plugins',
         layout: 'layout',
         appLayout: 'appLayout',
         constraints: 'constraints',
@@ -838,6 +866,14 @@ describe('hooks', () => {
       };
       run(c);
       expect(value).to.equal('translator');
+    });
+    it('usePlugins', () => {
+      let value;
+      c.fn = () => {
+        value = usePlugins();
+      };
+      run(c);
+      expect(value).to.eql('plugins');
     });
     it('useConstraints', () => {
       let value;

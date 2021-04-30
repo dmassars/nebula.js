@@ -26,7 +26,7 @@ export default function PropertiesDialog({ model, show, close }) {
     const onChanged = () => {
       model &&
         show &&
-        model.getProperties().then(props => {
+        model.getProperties().then((props) => {
           show && setObjectProps(JSON.stringify(props || {}, null, 2));
         });
     };
@@ -39,7 +39,7 @@ export default function PropertiesDialog({ model, show, close }) {
   }, [model && model.id, show]);
 
   useEffect(() => {
-    if (!monacoNode || !monacoRect || !objectProps) {
+    if (!monacoRef || !monacoNode || !monacoRect || !objectProps) {
       return undefined;
     }
     const { left, top, width, height } = monacoRect;

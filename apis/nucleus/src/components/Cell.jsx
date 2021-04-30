@@ -16,12 +16,22 @@ import useLayout, { useAppLayout } from '../hooks/useLayout';
 import InstanceContext from '../contexts/InstanceContext';
 import useObjectSelections from '../hooks/useObjectSelections';
 
-const initialState = err => ({
+/**
+ * @interface
+ * @extends HTMLElement
+ */
+const CellElement = {
+  /** @type {'njs-cell'} */
+  className: 'njs-cell',
+};
+
+const initialState = (err) => ({
   loading: false,
   loaded: false,
   longRunningQuery: false,
   error: err ? { title: err.message } : null,
   sn: null,
+  visualization: null,
 });
 
 const contentReducer = (state, action) => {
@@ -41,6 +51,7 @@ const contentReducer = (state, action) => {
         longRunningQuery: false,
         error: null,
         sn: action.sn,
+        visualization: action.visualization,
       };
     }
     case 'RENDER': {
@@ -103,28 +114,133 @@ const handleModal = ({ sn, layout, model }) => {
   }
 };
 
-const filterData = d => (d.qError ? d.qError.qErrorCode === 7005 : true);
+const filterData = (d) => (d.qError ? d.qError.qErrorCode === 7005 : true);
 
-const validateTargets = (translator, layout, { targets }) => {
+const validateInfo = (min, info, getDescription, translatedError, translatedCalcCond) =>
+  [...Array(min).keys()].map((i) => {
+    const exists = !!(info && info[i]);
+    const softError = exists && info[i].qError && info[i].qError.qErrorCode === 7005;
+    const error = exists && !softError && info[i].qError;
+    const delimiter = ':';
+    const calcCondMsg = softError && info[i].qCalcCondMsg;
+    const label = `${
+      // eslint-disable-next-line no-nested-ternary
+      error ? translatedError : softError ? calcCondMsg || translatedCalcCond : (exists && info[i].qFallbackTitle) || ''
+    }`;
+    const customDescription = getDescription(i);
+    const description = customDescription ? `${customDescription}${label.length ? delimiter : ''}` : null;
+    return {
+      description,
+      label,
+      missing: (info && !exists && !error && i >= info.length) || softError,
+      error,
+    };
+  });
+
+const getInfo = (info) => (info && (Array.isArray(info) ? info : [info])) || [];
+
+const validateTarget = (translator, layout, properties, def) => {
+  const minD = def.dimensions.min();
+  const minM = def.measures.min();
+  const c = def.resolveLayout(layout);
+  const reqDimErrors = validateInfo(
+    minD,
+    getInfo(c.qDimensionInfo),
+    (i) => def.dimensions.description(properties, i),
+    translator.get('Visualization.Invalid.Dimension'),
+    translator.get('Visualization.UnfulfilledCalculationCondition')
+  );
+  const reqMeasErrors = validateInfo(
+    minM,
+    getInfo(c.qMeasureInfo),
+    (i) => def.measures.description(properties, i),
+    translator.get('Visualization.Invalid.Measure'),
+    translator.get('Visualization.UnfulfilledCalculationCondition')
+  );
+  return {
+    reqDimErrors,
+    reqMeasErrors,
+  };
+};
+
+const validateCubes = (translator, targets, layout) => {
+  let hasUnfulfilledErrors = false;
+  let aggMinD = 0;
+  let aggMinM = 0;
+  let hasLayoutErrors = false;
+  let hasLayoutUnfulfilledCalculcationCondition = false;
   const layoutErrors = [];
-  const requirementsError = [];
-  targets.forEach(def => {
+  for (let i = 0; i < targets.length; ++i) {
+    const def = targets[i];
     const minD = def.dimensions.min();
     const minM = def.measures.min();
-    const hc = def.resolveLayout(layout);
-    const d = (hc.qDimensionInfo || []).filter(filterData);
-    const m = (hc.qMeasureInfo || []).filter(filterData);
-    const path = def.layoutPath;
-    if (hc.qError) {
-      layoutErrors.push({ path, error: hc.qError });
-    }
+    const c = def.resolveLayout(layout);
+    const d = getInfo(c.qDimensionInfo).filter(filterData); // Filter out optional calc conditions
+    const m = getInfo(c.qMeasureInfo).filter(filterData); // Filter out optional calc conditions
+    aggMinD += minD;
+    aggMinM += minM;
     if (d.length < minD || m.length < minM) {
-      requirementsError.push({ path });
+      hasUnfulfilledErrors = true;
     }
-  });
-  const showError = !!(layoutErrors.length || requirementsError.length);
-  const title = requirementsError.length ? translator.get('Supernova.Incomplete') : 'Error';
-  const data = requirementsError.length ? requirementsError : layoutErrors;
+    if (c.qError) {
+      hasLayoutErrors = true;
+      hasLayoutUnfulfilledCalculcationCondition = c.qError.qErrorCode === 7005;
+      const title =
+        // eslint-disable-next-line no-nested-ternary
+        hasLayoutUnfulfilledCalculcationCondition && c.qCalcCondMsg
+          ? c.qCalcCondMsg
+          : hasLayoutUnfulfilledCalculcationCondition
+          ? translator.get('Visualization.UnfulfilledCalculationCondition')
+          : translator.get('Visualization.LayoutError');
+
+      layoutErrors.push({ title, descriptions: [] });
+    }
+  }
+  return {
+    hasUnfulfilledErrors,
+    aggMinD,
+    aggMinM,
+    hasLayoutErrors,
+    layoutErrors,
+  };
+};
+
+const validateTargets = async (translator, layout, { targets }, model) => {
+  // Use a flattened requirements structure to combine all targets
+  const { hasUnfulfilledErrors, aggMinD, aggMinM, hasLayoutErrors, layoutErrors } = validateCubes(
+    translator,
+    targets,
+    layout
+  );
+
+  const reqDimErrors = [];
+  const reqMeasErrors = [];
+  let loopCacheProperties = null;
+
+  for (let i = 0; i < targets.length; ++i) {
+    const def = targets[i];
+    if (!hasLayoutErrors && hasUnfulfilledErrors) {
+      // eslint-disable-next-line no-await-in-loop
+      const properties = loopCacheProperties || (await model.getProperties());
+      loopCacheProperties = properties;
+      const res = validateTarget(translator, layout, properties, def);
+      reqDimErrors.push(...res.reqDimErrors);
+      reqMeasErrors.push(...res.reqMeasErrors);
+    }
+  }
+  const fulfilledDims = reqDimErrors.filter((e) => !(e.missing || e.error)).length;
+  const reqDimErrorsTitle = translator.get('Visualization.Incomplete.Dimensions', [fulfilledDims, aggMinD]);
+  const fulfilledMeas = reqMeasErrors.filter((e) => !(e.missing || e.error)).length;
+  const reqMeasErrorsTitle = translator.get('Visualization.Incomplete.Measures', [fulfilledMeas, aggMinM]);
+  const reqErrors = [
+    { title: reqDimErrorsTitle, descriptions: [...reqDimErrors] },
+    { title: reqMeasErrorsTitle, descriptions: [...reqMeasErrors] },
+  ];
+
+  const showError = hasLayoutErrors || hasUnfulfilledErrors;
+  const data = hasLayoutErrors ? layoutErrors : reqErrors;
+  const title = hasLayoutErrors ? layoutErrors[0].title : translator.get('Visualization.Incomplete');
+
   return [showError, { title, data }];
 };
 
@@ -138,14 +254,9 @@ const getType = async ({ types, name, version }) => {
   return SN;
 };
 
-const loadType = async ({ dispatch, types, name, version, layout, model, app, selections }) => {
+const loadType = async ({ dispatch, types, visualization, version, model, app, selections }) => {
   try {
-    const snType = await getType({ types, name, version });
-    // Layout might have changed since we requested the new type -> quick return
-    if (layout.visualization !== name) {
-      return undefined;
-    }
-
+    const snType = await getType({ types, name: visualization, version });
     const sn = snType.create({
       model,
       app,
@@ -158,30 +269,49 @@ const loadType = async ({ dispatch, types, name, version, layout, model, app, se
   return undefined;
 };
 
-const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMount }, ref) => {
-  const {
-    app,
-    public: {
-      nebbie: { types },
-    },
-  } = corona;
+const Cell = forwardRef(({ halo, model, initialSnOptions, initialSnPlugins, initialError, onMount }, ref) => {
+  const { app, types } = halo;
 
   const { translator, language } = useContext(InstanceContext);
   const theme = useTheme();
-  const cellRef = useRef();
+  const [cellRef, cellRect, cellNode] = useRect();
   const [state, dispatch] = useReducer(contentReducer, initialState(initialError));
   const [layout, { validating, canCancel, canRetry }, longrunning] = useLayout(model);
   const [appLayout] = useAppLayout(app);
-  const [contentRef, contentRect, , contentNode] = useRect();
+  const [contentRef, contentRect] = useRect();
   const [snOptions, setSnOptions] = useState(initialSnOptions);
+  const [snPlugins, setSnPlugins] = useState(initialSnPlugins);
   const [selections] = useObjectSelections(app, model);
+  const [hovering, setHover] = useState(false);
+  const hoveringDebouncer = useRef({ enter: null, leave: null });
+
+  const handleOnMouseEnter = () => {
+    if (hoveringDebouncer.current.leave) {
+      clearTimeout(hoveringDebouncer.current.leave);
+    }
+    if (hoveringDebouncer.enter) return;
+    hoveringDebouncer.current.enter = setTimeout(() => {
+      setHover(true);
+      hoveringDebouncer.current.enter = null;
+    }, 250);
+  };
+  const handleOnMouseLeave = () => {
+    if (hoveringDebouncer.current.enter) {
+      clearTimeout(hoveringDebouncer.current.enter);
+    }
+    if (hoveringDebouncer.current.leave) return;
+    hoveringDebouncer.current.leave = setTimeout(() => {
+      setHover(false);
+      hoveringDebouncer.current.leave = null;
+    }, 750);
+  };
 
   useEffect(() => {
-    if (initialError || !appLayout) {
+    if (initialError || !appLayout || !layout) {
       return undefined;
     }
-    const validate = sn => {
-      const [showError, error] = validateTargets(translator, layout, sn.generator.qae.data);
+    const validate = async (sn) => {
+      const [showError, error] = await validateTargets(translator, layout, sn.generator.qae.data, model);
       if (showError) {
         dispatch({ type: 'ERROR', error });
       } else {
@@ -189,35 +319,31 @@ const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMoun
       }
       handleModal({ sn: state.sn, layout, model });
     };
-    const load = async (withLayout, version) => {
+    const load = async (visualization, version) => {
+      dispatch({ type: 'LOADING' });
       const sn = await loadType({
         dispatch,
         types,
-        name: withLayout.visualization,
+        visualization,
         version,
-        layout,
         model,
         app,
         selections,
       });
       if (sn) {
-        dispatch({ type: 'LOADED', sn });
+        dispatch({ type: 'LOADED', sn, visualization });
         onMount();
       }
       return undefined;
     };
 
-    if (!layout) {
-      dispatch({ type: 'LOADING' });
-      return undefined;
-    }
-
-    if (state.sn) {
+    // Validate if it's still the same type
+    if (state.visualization === layout.visualization && state.sn) {
       validate(state.sn);
       return undefined;
     }
 
-    // Load supernova h
+    // Load supernova
     const withVersion = types.getSupportedVersion(layout.visualization, layout.version);
     if (!withVersion) {
       dispatch({
@@ -228,7 +354,7 @@ const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMoun
       });
       return undefined;
     }
-    load(layout, withVersion);
+    load(layout.visualization, withVersion);
 
     return () => {};
   }, [types, state.sn, model, layout, appLayout, language]);
@@ -246,9 +372,13 @@ const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMoun
   useImperativeHandle(
     ref,
     () => ({
+      getQae() {
+        return state.sn.generator.qae;
+      },
       setSnOptions,
+      setSnPlugins,
       async takeSnapshot() {
-        const { width, height } = cellRef.current.getBoundingClientRect();
+        const { width, height } = cellRect;
 
         // clone layout to avoid mutation
         let clonedLayout = JSON.parse(JSON.stringify(layout));
@@ -272,18 +402,19 @@ const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMoun
         };
       },
       async exportImage() {
-        if (!corona.config.snapshot.capture) {
-          throw new Error('Nebula has not been configured with snapshot.capture');
+        if (typeof halo.config.snapshot.capture !== 'function') {
+          throw new Error('Stardust embed has not been configured with snapshot.capture callback');
         }
         const snapshot = await this.takeSnapshot(); // eslint-disable-line
-        return corona.config.snapshot.capture(snapshot);
+        return halo.config.snapshot.capture(snapshot);
       },
     }),
-    [state.sn, contentRect, layout, theme.name, appLayout]
+    [state.sn, contentRect, cellRect, layout, theme.name, appLayout]
   );
+
   // console.log('content', state);
   let Content = null;
-  if (state.loading) {
+  if (state.loading && !state.longRunningQuery) {
     Content = <LoadingSn />;
   } else if (state.error) {
     Content = <CError {...state.error} />;
@@ -292,11 +423,11 @@ const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMoun
       <Supernova
         key={layout.visualization}
         sn={state.sn}
-        corona={corona}
+        halo={halo}
         snOptions={snOptions}
+        snPlugins={snPlugins}
         layout={layout}
         appLayout={appLayout}
-        parentNode={contentNode}
       />
     );
   }
@@ -306,8 +437,10 @@ const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMoun
       style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}
       elevation={0}
       square
-      className="nebulajs-cell"
+      className={CellElement.className}
       ref={cellRef}
+      onMouseEnter={handleOnMouseEnter}
+      onMouseLeave={handleOnMouseLeave}
     >
       <Grid
         container
@@ -321,9 +454,11 @@ const Cell = forwardRef(({ corona, model, initialSnOptions, initialError, onMoun
           ...(state.longRunningQuery ? { opacity: '0.3' } : {}),
         }}
       >
-        <Header layout={layout} sn={state.sn}>
-          &nbsp;
-        </Header>
+        {cellNode && layout && state.sn && (
+          <Header layout={layout} sn={state.sn} anchorEl={cellNode} hovering={hovering}>
+            &nbsp;
+          </Header>
+        )}
         <Grid
           item
           xs

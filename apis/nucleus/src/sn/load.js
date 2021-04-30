@@ -5,35 +5,34 @@ const LOADED = {};
  * @param {object} type
  * @param {string} type.name
  * @param {string} type.version
- * @param {object} env
- * @returns {Promise<Supernova>}
+ * @returns {Promise<Visualization>}
  */
 
-export async function load(name, version, { config, public: { env } }, loader) {
+export async function load(name, version, { config }, loader) {
   const key = `${name}__${version}`;
   if (!LOADED[key]) {
     const sKey = `${name}${(version && ` v${version}`) || ''}`;
-    const p = (loader || config.load)(
-      {
-        name,
-        version,
-      },
-      env
-    );
+    if (loader && typeof loader !== 'function') {
+      throw new Error(`load of visualization '${sKey}' is not a fuction, wrap load promise in function`);
+    }
+    const p = (loader || config.load)({
+      name,
+      version,
+    });
     const prom = Promise.resolve(p);
     LOADED[key] = prom
-      .then(sn => {
+      .then((sn) => {
         if (!sn) {
           // TODO - improve validation
-          throw new Error(`load() of supernova '${sKey}' resolved to an invalid object`);
+          throw new Error(`load() of visualization '${sKey}' resolved to an invalid object`);
         }
         return sn;
       })
-      .catch(e => {
+      .catch((e) => {
         if (__NEBULA_DEV__) {
           console.warn(e); // eslint-disable-line no-console
         }
-        throw new Error(`Failed to load supernova: '${sKey}'`);
+        throw new Error(`Failed to load visualization: '${sKey}'`);
       });
   }
 
@@ -41,7 +40,7 @@ export async function load(name, version, { config, public: { env } }, loader) {
 }
 
 export function clearFromCache(name) {
-  Object.keys(LOADED).forEach(key => {
+  Object.keys(LOADED).forEach((key) => {
     if (key.split('__')[0] === name) {
       LOADED[key] = undefined;
     }

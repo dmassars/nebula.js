@@ -1,6 +1,6 @@
 /* eslint no-underscore-dangle: 0 */
 import { useEffect } from 'react';
-import { useObjectSelectionsStore, useAppModalStore } from '../stores/selectionsStore';
+import { useObjectSelectionsStore, useAppModalStore } from '../stores/selections-store';
 import useAppSelections from './useAppSelections';
 import eventmixin from '../selections/event-mixin';
 import useLayout from './useLayout';
@@ -23,7 +23,6 @@ function createObjectSelections({ appSelections, appModal, model }) {
   /**
    * @class
    * @alias ObjectSelections
-   * @hideconstructor
    */
   const api = /** @lends ObjectSelections# */ {
     // model,
@@ -90,11 +89,11 @@ function createObjectSelections({ appSelections, appModal, model }) {
       }
       await b;
       const qSuccess = await model[s.method](...s.params);
+      hasSelected = s.method !== 'resetMadeSelections';
       if (!qSuccess) {
-        this.clear();
+        model.resetMadeSelections();
         return false;
       }
-      hasSelected = true;
       return true;
     },
     /**
@@ -104,7 +103,7 @@ function createObjectSelections({ appSelections, appModal, model }) {
       if (layout && layout.qListObject && layout.qListObject.qDimensionInfo) {
         return !layout.qListObject.qDimensionInfo.qLocked;
       }
-      return hasSelected || (layout && layout.qSelectionInfo.qMadeSelections);
+      return hasSelected;
     },
     /**
      * @returns {boolean}
@@ -113,7 +112,7 @@ function createObjectSelections({ appSelections, appModal, model }) {
       if (layout && layout.qListObject && layout.qListObject.qDimensionInfo) {
         return !layout.qListObject.qDimensionInfo.qLocked;
       }
-      return hasSelected || (layout && layout.qSelectionInfo.qMadeSelections);
+      return hasSelected;
     },
     /**
      * @returns {boolean}
@@ -136,16 +135,12 @@ function createObjectSelections({ appSelections, appModal, model }) {
      * @param {string[]} paths
      * @returns {Promise<undefined>}
      */
-    goModal: paths => appModal.begin(model, paths, false),
+    goModal: (paths) => appModal.begin(model, paths, false),
     /**
      * @param {boolean} [accept=false]
      * @returns {Promise<undefined>}
      */
     noModal: (accept = false) => appModal.end(accept),
-    /**
-     * @returns {Promise<undefined>}
-     */
-    abortModal: () => appSelections.abortModal(true),
   };
 
   eventmixin(api);
@@ -167,6 +162,7 @@ export default function useObjectSelections(app, model) {
 
     objectSelections = createObjectSelections({ appSelections, appModal, model });
     objectSelectionsStore.set(key, objectSelections);
+    objectSelectionsStore.dispatch(true);
   }, [appSelections, model]);
 
   useEffect(() => {

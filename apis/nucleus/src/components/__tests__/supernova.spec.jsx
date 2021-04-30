@@ -18,14 +18,22 @@ describe('<Supernova />', () => {
     render = async ({
       sn = { component: {} },
       snOptions = {},
+      snPlugins = [],
       layout = {},
       appLayout = {},
-      corona = {},
+      halo = {},
       rendererOptions,
     } = {}) => {
       await act(async () => {
         renderer = create(
-          <Supernova sn={sn} snOptions={snOptions} layout={layout} appLayout={appLayout} corona={corona} />,
+          <Supernova
+            sn={sn}
+            snOptions={snOptions}
+            snPlugins={snPlugins}
+            layout={layout}
+            appLayout={appLayout}
+            halo={halo}
+          />,
           rendererOptions || null
         );
       });
@@ -43,9 +51,10 @@ describe('<Supernova />', () => {
         component: {},
       },
       snOptions: {},
+      snPlugins: [],
       layout: {},
       appLayout: {},
-      corona: {},
+      halo: {},
     });
   });
   it('should mount', async () => {
@@ -62,12 +71,10 @@ describe('<Supernova />', () => {
         component,
       },
       rendererOptions: {
-        createNodeMock: () => {
-          return {
-            style: {},
-            getBoundingClientRect: () => ({ left: 100, top: 200, width: 300, height: 400 }),
-          };
-        },
+        createNodeMock: () => ({
+          style: {},
+          getBoundingClientRect: () => ({ left: 100, top: 200, width: 300, height: 400 }),
+        }),
       },
     });
     expect(component.created.callCount).to.equal(1);
@@ -76,7 +83,7 @@ describe('<Supernova />', () => {
   it('should render', async () => {
     let initialRenderResolve;
     // eslint-disable-next-line no-new
-    const initialRender = new Promise(resolve => {
+    const initialRender = new Promise((resolve) => {
       initialRenderResolve = resolve;
     });
     const logicalSize = sandbox.stub().returns('logical');
@@ -97,19 +104,20 @@ describe('<Supernova />', () => {
         component,
       },
       snOptions,
+      snPlugins: [],
       layout: 'layout',
       appLayout: { qLocaleInfo: 'loc' },
-      corona: { public: { theme: 'theme' }, app: { session: {} } },
+      halo: { public: { theme: 'theme' }, app: { session: {} } },
       rendererOptions: {
-        createNodeMock: () => {
-          return {
-            style: {},
-            getBoundingClientRect: () => ({ left: 100, top: 200, width: 300, height: 400 }),
-          };
-        },
+        createNodeMock: () => ({
+          style: {},
+          getBoundingClientRect: () => ({ left: 100, top: 200, width: 300, height: 400 }),
+        }),
       },
     });
-    global.window.addEventListener.callArg(1);
+    await act(async () => {
+      global.window.addEventListener.callArg(1);
+    });
     expect(component.created.callCount).to.equal(1);
     expect(component.mounted.callCount).to.equal(1);
     expect(await initialRender).to.equal(true);
@@ -117,6 +125,7 @@ describe('<Supernova />', () => {
     expect(component.render.getCall(0).args[0]).to.eql({
       layout: 'layout',
       options: snOptions,
+      plugins: [],
       context: {
         constraints: {},
         appLayout: { qLocaleInfo: 'loc' },
@@ -144,23 +153,23 @@ describe('<Supernova />', () => {
         component,
       },
       layout: {},
-      corona: { public: {} },
+      halo: { public: {} },
       rendererOptions: {
-        createNodeMock: () => {
-          return {
-            style: {},
-            getBoundingClientRect,
-          };
-        },
+        createNodeMock: () => ({
+          style: {},
+          getBoundingClientRect,
+        }),
       },
     });
-    global.window.addEventListener.callArg(1);
+    await act(async () => {
+      global.window.addEventListener.callArg(1);
+    });
     sandbox.clock.tick(200);
-    await Promise.resolve(); // flush pending promises
     getBoundingClientRect.returns({ left: 200, top: 300, width: 400, height: 500 });
-    global.window.addEventListener.callArg(1);
+    await act(async () => {
+      global.window.addEventListener.callArg(1);
+    });
     sandbox.clock.tick(200);
-    await Promise.resolve();
     expect(component.render.callCount).to.equal(2);
   });
 });

@@ -11,7 +11,7 @@ import ListBoxPopover from '../listbox/ListBoxPopover';
 
 import InstanceContext from '../../contexts/InstanceContext';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
   item: {
     backgroundColor: theme.palette.background.paper,
     position: 'relative',
@@ -23,19 +23,31 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-export default function OneField({ field, api, stateIx = 0, skipHandleShowListBoxPopover = false }) {
+export default function OneField({
+  field,
+  api,
+  stateIx = 0,
+  skipHandleShowListBoxPopover = false,
+  moreAlignTo = null,
+  onClose = () => {},
+}) {
   const { translator } = useContext(InstanceContext);
-  const alignTo = useRef();
+  const alignTo = moreAlignTo || useRef();
   const theme = useTheme();
   const [showListBoxPopover, setShowListBoxPopover] = useState(false);
 
   const classes = useStyles();
 
-  const handleShowListBoxPopover = e => {
+  const handleShowListBoxPopover = (e) => {
     if (e.currentTarget.contains(e.target)) {
       // because click in popover will propagate to parent
       setShowListBoxPopover(!showListBoxPopover);
     }
+  };
+
+  const handleCloseShowListBoxPopover = () => {
+    setShowListBoxPopover(false);
+    onClose();
   };
 
   const selection = field.selections[stateIx];
@@ -63,7 +75,7 @@ export default function OneField({ field, api, stateIx = 0, skipHandleShowListBo
   } else if (numSelected > 1 && selection.qTotal) {
     label = translator.get('CurrentSelections.Of', [numSelected, selection.qTotal]);
   } else if (selection.qSelectedFieldSelectionInfo) {
-    label = selection.qSelectedFieldSelectionInfo.map(v => v.qName).join(', ');
+    label = selection.qSelectedFieldSelectionInfo.map((v) => v.qName).join(', ');
   }
   if (field.states[stateIx] !== '$') {
     label = `${field.states[stateIx]}: ${label}`;
@@ -78,14 +90,12 @@ export default function OneField({ field, api, stateIx = 0, skipHandleShowListBo
     s.offset = i ? segments[i - 1].offset + segments[i - 1].ratio : 0; // eslint-disable-line
   });
 
-  return (
-    <Grid
-      container
-      spacing={0}
-      ref={alignTo}
-      className={classes.item}
-      onClick={(skipHandleShowListBoxPopover === false && handleShowListBoxPopover) || null}
-    >
+  let Header = null;
+  let Icon = null;
+  let SegmentsIndicator = null;
+  let Component = null;
+  if (!moreAlignTo) {
+    Header = (
       <Grid item xs style={{ minWidth: 0, flexGrow: 1, opacity: selection.qLocked ? '0.3' : '' }}>
         <Typography noWrap style={{ fontSize: '12px', lineHeight: '16px', fontWeight: 600 }}>
           {selection.qField}
@@ -94,26 +104,28 @@ export default function OneField({ field, api, stateIx = 0, skipHandleShowListBo
           {label}
         </Typography>
       </Grid>
-      {selection.qLocked ? (
-        <Grid item>
-          <IconButton>
-            <Lock />
-          </IconButton>
-        </Grid>
-      ) : (
-        <Grid item>
-          <IconButton
-            title={translator.get('Selection.Clear')}
-            onClick={e => {
-              e.stopPropagation();
-              api.clearField(selection.qField, field.states[stateIx]);
-            }}
-            style={{ zIndex: 1 }}
-          >
-            <Remove />
-          </IconButton>
-        </Grid>
-      )}
+    );
+
+    Icon = selection.qLocked ? (
+      <Grid item>
+        <IconButton>
+          <Lock />
+        </IconButton>
+      </Grid>
+    ) : (
+      <Grid item>
+        <IconButton
+          title={translator.get('Selection.Clear')}
+          onClick={(e) => {
+            e.stopPropagation();
+            api.clearField(selection.qField, field.states[stateIx]);
+          }}
+        >
+          <Remove />
+        </IconButton>
+      </Grid>
+    );
+    SegmentsIndicator = (
       <div
         style={{
           height: '4px',
@@ -124,7 +136,7 @@ export default function OneField({ field, api, stateIx = 0, skipHandleShowListBo
         }}
       >
         {noSegments === false &&
-          segments.map(s => (
+          segments.map((s) => (
             <div
               key={s.color}
               style={{
@@ -138,16 +150,41 @@ export default function OneField({ field, api, stateIx = 0, skipHandleShowListBo
             />
           ))}
       </div>
-      {showListBoxPopover && (
-        <ListBoxPopover
-          alignTo={alignTo}
-          show={showListBoxPopover}
-          close={() => setShowListBoxPopover(false)}
-          app={api.model}
-          fieldName={selection.qField}
-          stateName={field.states[stateIx]}
-        />
-      )}
-    </Grid>
+    );
+    Component = (
+      <Grid
+        container
+        spacing={0}
+        ref={alignTo}
+        className={classes.item}
+        onClick={(skipHandleShowListBoxPopover === false && handleShowListBoxPopover) || null}
+      >
+        {Header}
+        {Icon}
+        {SegmentsIndicator}
+        {showListBoxPopover && (
+          <ListBoxPopover
+            alignTo={alignTo}
+            show={showListBoxPopover}
+            close={handleCloseShowListBoxPopover}
+            app={api.model}
+            fieldName={selection.qField}
+            stateName={field.states[stateIx]}
+          />
+        )}
+      </Grid>
+    );
+  }
+  return moreAlignTo ? (
+    <ListBoxPopover
+      alignTo={alignTo}
+      show
+      close={handleCloseShowListBoxPopover}
+      app={api.model}
+      fieldName={selection.qField}
+      stateName={field.states[stateIx]}
+    />
+  ) : (
+    Component
   );
 }

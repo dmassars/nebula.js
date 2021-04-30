@@ -23,21 +23,21 @@ const defaultComponent = {
 
   // temporary
   observeActions() {},
-  setSnapshotData: snapshot => Promise.resolve(snapshot),
+  setSnapshotData: (snapshot) => Promise.resolve(snapshot),
 };
 
 const reservedKeys = Object.keys(defaultComponent);
 
-const mixin = obj => {
+const mixin = (obj) => {
   /* eslint no-param-reassign: 0 */
-  Object.keys(EventEmitter.prototype).forEach(key => {
+  Object.keys(EventEmitter.prototype).forEach((key) => {
     obj[key] = EventEmitter.prototype[key];
   });
   EventEmitter.init(obj);
   return obj;
 };
 
-function createWithHooks(generator, opts, env) {
+function createWithHooks(generator, opts, galaxy) {
   if (__NEBULA_DEV__) {
     if (generator.component.run !== run) {
       // eslint-disable-next-line no-console
@@ -68,15 +68,16 @@ function createWithHooks(generator, opts, env) {
       selections: opts.selections,
       element: undefined, // set on mount
       // ---- singletons ----
+      deviceType: galaxy.deviceType,
       theme: undefined,
-      translator: env.translator,
+      translator: galaxy.translator,
       // --- dynamic values ---
       layout: {},
       appLayout: {},
       constraints: forcedConstraints,
       options: {},
+      plugins: [],
     },
-    env,
     fn: generator.component.fn,
     created() {},
     mounted(element) {
@@ -106,9 +107,9 @@ function createWithHooks(generator, opts, env) {
           // the options object to ensure callbacks are triggered
           const op = {};
           let opChanged = false;
-          Object.keys(r.options).forEach(key => {
+          Object.keys(r.options).forEach((key) => {
+            op[key] = r.options[key];
             if (this.context.options[key] !== r.options[key]) {
-              op[key] = r.options[key];
               opChanged = true;
             }
           });
@@ -118,8 +119,21 @@ function createWithHooks(generator, opts, env) {
           }
         }
 
+        if (r.plugins) {
+          let pluginsChanged = this.context.plugins.length !== r.plugins.length;
+          r.plugins.forEach((plugin, index) => {
+            if (this.context.plugins[index] !== plugin) {
+              pluginsChanged = true;
+            }
+          });
+          if (pluginsChanged) {
+            this.context.plugins = [...r.plugins];
+            changed = true;
+          }
+        }
+
         // do a deep check on 'small' objects
-        deepCheck.forEach(key => {
+        deepCheck.forEach((key) => {
           const ref = r.context;
           if (ref && Object.prototype.hasOwnProperty.call(ref, key)) {
             let s = JSON.stringify(ref[key]);
@@ -185,7 +199,7 @@ function createWithHooks(generator, opts, env) {
     isHooked: true,
   };
 
-  deepCheck.forEach(key => {
+  deepCheck.forEach((key) => {
     current[key] = JSON.stringify(c.context[key]);
   });
   current.themeName = c.context.theme ? c.context.theme.name() : undefined;
@@ -215,7 +229,7 @@ function createClassical(generator, opts) {
     },
   };
 
-  Object.keys(generator.component || {}).forEach(key => {
+  Object.keys(generator.component || {}).forEach((key) => {
     if (reservedKeys.indexOf(key) !== -1) {
       componentInstance[key] = generator.component[key].bind(userInstance);
     } else {
@@ -248,24 +262,25 @@ function createClassical(generator, opts) {
   return [componentInstance, hero];
 }
 
-export default function create(generator, opts, env) {
+export default function create(generator, opts, galaxy) {
   if (typeof generator.component === 'function') {
     generator.component = hook(generator.component);
   }
   const [componentInstance, hero] =
     generator.component && generator.component.__hooked
-      ? createWithHooks(generator, opts, env)
+      ? createWithHooks(generator, opts, galaxy)
       : createClassical(generator, opts);
 
   const teardowns = [];
 
+  if (opts.model.__snInterceptor) {
+    // remove old hook - happens only when proper cleanup hasn't been done
+    opts.model.__snInterceptor.teardown();
+  }
+
   if (generator.qae.properties.onChange) {
     // TODO - handle multiple sn
     // TODO - check privileges
-    if (opts.model.__snInterceptor) {
-      // remove old hook - happens only when proper cleanup hasn't been done
-      opts.model.__snInterceptor.teardown();
-    }
 
     opts.model.__snInterceptor = {
       setProperties: opts.model.setProperties,
@@ -280,16 +295,16 @@ export default function create(generator, opts, env) {
 
     opts.model.applyPatches = function applyPatches(qPatches, qSoftPatch) {
       const method = qSoftPatch ? 'getEffectiveProperties' : 'getProperties';
-      return opts.model[method]().then(currentProperties => {
+      return opts.model[method]().then((currentProperties) => {
         // apply patches to current props
         const original = JSONPatch.clone(currentProperties);
-        const patches = qPatches.map(p => ({ op: p.qOp, value: JSON.parse(p.qValue), path: p.qPath }));
+        const patches = qPatches.map((p) => ({ op: p.qOp, value: JSON.parse(p.qValue), path: p.qPath }));
         JSONPatch.apply(currentProperties, patches);
 
         generator.qae.properties.onChange.call({ model: opts.model }, currentProperties);
 
         // calculate new patches from after change
-        const newPatches = JSONPatch.generate(original, currentProperties).map(p => ({
+        const newPatches = JSONPatch.generate(original, currentProperties).map((p) => ({
           qOp: p.op,
           qValue: JSON.stringify(p.value),
           qPath: p.path,
@@ -314,7 +329,7 @@ export default function create(generator, opts, env) {
       items: hero ? hero.selectionToolbarItems : [],
     },
     destroy() {
-      teardowns.forEach(t => t());
+      teardowns.forEach((t) => t());
     },
     logicalSize: generator.definition.logicalSize || (() => false),
   };

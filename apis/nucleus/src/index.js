@@ -1,12 +1,15 @@
 /* eslint no-underscore-dangle:0 */
 import appLocaleFn from './locale/app-locale';
 import appThemeFn from './app-theme';
+import deviceTypeFn from './device-type';
 
 import bootNebulaApp from './components/NebulaApp';
 import AppSelectionsPortal from './components/selections/AppSelections';
+import ListBoxPortal from './components/listbox/ListBoxInline';
 
 import create from './object/create-session-object';
 import get from './object/get-object';
+import flagsFn from './flags/flags';
 import { create as typesFn } from './sn/types';
 
 /**
@@ -21,6 +24,8 @@ const DEFAULT_CONTEXT = /** @lends Context */ {
   theme: 'light',
   /** @type {string=} */
   language: 'en-US',
+  /** @type {string=} */
+  deviceType: 'auto',
   constraints: {},
 };
 
@@ -33,7 +38,7 @@ const DEFAULT_SNAPSHOT_CONFIG = /** @lends SnapshotConfiguration */ {
    * @param {string} id
    * @returns {Promise<SnapshotLayout>}
    */
-  get: async id => {
+  get: async (id) => {
     const res = await fetch(`/njs/snapshot/${id}`);
     if (!res.ok) {
       throw new Error(res.statusText);
@@ -47,7 +52,7 @@ const DEFAULT_SNAPSHOT_CONFIG = /** @lends SnapshotConfiguration */ {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-    }).then(res => res.json());
+    }).then((res) => res.json());
   },
 };
 
@@ -69,8 +74,9 @@ const DEFAULT_CONFIG = /** @lends Configuration */ {
    * @type {(ThemeInfo[])=}
    */
   themes: [],
+
   /** @type {object=} */
-  env: {},
+  anything: {},
 
   /**
    * @type {SnapshotConfiguration=}
@@ -79,17 +85,17 @@ const DEFAULT_CONFIG = /** @lends Configuration */ {
   snapshot: DEFAULT_SNAPSHOT_CONFIG,
 };
 
-const mergeObj = (o1 = {}, o2 = {}) => {
-  return {
-    ...o1,
-    ...o2,
-  };
-};
-const mergeArray = (a1 = [], a2 = []) => {
-  // Simple merge and deduplication
-  return [...a1, ...a2].filter((v, i, a) => a.indexOf(v) === i);
-};
+/**
+ * @interface Galaxy
+ */
 
+const mergeObj = (o1 = {}, o2 = {}) => ({
+  ...o1,
+  ...o2,
+});
+const mergeArray = (a1 = [], a2 = []) =>
+  // Simple merge and deduplication
+  [...a1, ...a2].filter((v, i, a) => a.indexOf(v) === i);
 const mergeConfigs = (base, c) => ({
   context: mergeObj(base.context, c.context),
   load: c.load || base.load,
@@ -98,27 +104,28 @@ const mergeConfigs = (base, c) => ({
   },
   types: mergeArray(base.types, c.types),
   themes: mergeArray(base.themes, c.themes),
-  env: mergeObj(base.env, c.env),
+  flags: mergeObj(base.flags, c.flags),
+  anything: mergeObj(base.anything, c.anything),
 });
 
 function nuked(configuration = {}) {
   const locale = appLocaleFn(configuration.context.language);
 
   /**
-   * Initiates a new `Nucleus` instance using the specified `app`.
+   * Initiates a new `Embed` instance using the specified enigma `app`.
    * @entry
-   * @interface nucleus
+   * @function embed
    * @param {enigma.Doc} app
    * @param {Configuration=} instanceConfig
-   * @returns {Nucleus}
+   * @returns {Embed}
    * @example
-   * import nucleus from '@nebula.js/nucleus'
-   * const n = nucleus(app);
+   * import { embed } from '@nebula.js/stardust'
+   * const n = embed(app);
    * n.render({ id: 'abc' });
    */
-  function nucleus(app, instanceConfig) {
+  function embed(app, instanceConfig) {
     if (instanceConfig) {
-      return nucleus.createConfiguration(instanceConfig)(app);
+      return embed.createConfiguration(instanceConfig)(app);
     }
 
     let currentContext = {
@@ -137,27 +144,35 @@ function nuked(configuration = {}) {
     });
 
     const publicAPIs = {
-      env: {
+      galaxy: /** @lends Galaxy */ {
+        /** @type {Translator} */
         translator: locale.translator,
-        nucleus,
+        // TODO - validate flags input
+        /** @type {Flags} */
+        flags: flagsFn(configuration.flags),
+        /** @type {string} */
+        deviceType: deviceTypeFn(configuration.context.deviceType),
+        /** @type {object} */
+        anything: configuration.anything,
       },
       theme: appTheme.externalAPI,
       translator: locale.translator,
       nebbie: null, // actual value is set further down
     };
 
-    const corona = {
+    const halo = {
       app,
       root,
       config: configuration,
       public: publicAPIs,
       context: currentContext,
       nebbie: null,
+      types: null,
     };
 
-    const types = typesFn({ corona });
+    const types = typesFn({ halo });
 
-    configuration.types.forEach(t =>
+    configuration.types.forEach((t) =>
       types.register(
         {
           name: t.name,
@@ -177,22 +192,13 @@ function nuked(configuration = {}) {
 
     /**
      * @class
-     * @alias Nucleus
-     * @hideconstructor
+     * @alias Embed
      */
-    const api = /** @lends Nucleus# */ {
-      get: async () => {
-        // eslint-disable-next-line
-        console.warn(new Error('nucleus.get() has been deprecated, use nucleus.render() instead').stack);
-      },
-      create: async () => {
-        // eslint-disable-next-line
-        console.warn(new Error('nucleus.create() has been deprecated, use nucleus.render() instead').stack);
-      },
+    const api = /** @lends Embed# */ {
       /**
-       * Renders a supernova into an HTMLElement.
+       * Renders a visualization into an HTMLElement.
        * @param {CreateConfig | GetConfig} cfg - The render configuration.
-       * @returns {Promise<SupernovaController>} A controller to the rendered supernova
+       * @returns {Promise<Viz>} A controller to the rendered visualization.
        * @example
        * // render from existing object
        * n.render({
@@ -202,19 +208,20 @@ function nuked(configuration = {}) {
        * @example
        * // render on the fly
        * n.render({
+       *   element: el,
        *   type: 'barchart',
        *   fields: ['Product', { qLibraryId: 'u378hn', type: 'measure' }]
        * });
        */
-      render: async cfg => {
+      render: async (cfg) => {
         await currentThemePromise;
         if (cfg.id) {
-          return get(cfg, corona);
+          return get(cfg, halo);
         }
-        return create(cfg, corona);
+        return create(cfg, halo);
       },
       /**
-       * Updates the current context of this nucleus instance.
+       * Updates the current context of this embed instance.
        * Use this when you want to change some part of the current context, like theme.
        * @param {Context} ctx - The context to update.
        * @returns {Promise<undefined>}
@@ -225,10 +232,10 @@ function nuked(configuration = {}) {
        * // limit constraints
        * n.context({ constraints: { active: true } });
        */
-      context: async ctx => {
+      context: async (ctx) => {
         // filter valid values to avoid triggering unnecessary rerender
         let changes;
-        ['theme', 'language', 'constraints'].forEach(key => {
+        ['theme', 'language', 'constraints'].forEach((key) => {
           if (ctx[key] && ctx[key] !== currentContext[key]) {
             if (!changes) {
               changes = {};
@@ -245,7 +252,7 @@ function nuked(configuration = {}) {
           translator: locale.translator,
         };
 
-        corona.context = currentContext;
+        halo.context = currentContext;
 
         if (changes.theme) {
           currentThemePromise = appTheme.setTheme(changes.theme);
@@ -253,7 +260,7 @@ function nuked(configuration = {}) {
         }
 
         if (changes.language) {
-          corona.public.translator.language(changes.language);
+          halo.public.translator.language(changes.language);
         }
 
         root.context(currentContext);
@@ -270,7 +277,7 @@ function nuked(configuration = {}) {
           // const appSelections = await root.getAppSelections(); // Don't expose this for now
           selectionsApi = /** @lends AppSelections# */ {
             /**
-             * Mounts the app selection UI into the provided HTMLElement
+             * Mounts the app selection UI into the provided HTMLElement.
              * @param {HTMLElement} element
              * @example
              * selections.mount(element);
@@ -289,7 +296,7 @@ function nuked(configuration = {}) {
               root.add(selectionsComponentReference);
             },
             /**
-             * Unmounts the app selection UI from the DOM
+             * Unmounts the app selection UI from the DOM.
              * @example
              * selections.unmount();
              */
@@ -303,25 +310,98 @@ function nuked(configuration = {}) {
         }
         return selectionsApi;
       },
-      types,
+      /**
+       * Gets the listbox instance of the specified field
+       * @param {string|LibraryField} fieldIdentifier Fieldname as a string or a Library dimension
+       * @returns {Promise<FieldInstance>}
+       * @experimental
+       * @since 1.1.0
+       * @example
+       * const fieldInstance = await n.field("MyField");
+       * fieldInstance.mount(element, { title: "Hello Field"});
+       */
+      field: async (fieldIdentifier) => {
+        const fieldName = typeof fieldIdentifier === 'string' ? fieldIdentifier : fieldIdentifier.qLibraryId;
+        if (!fieldName) {
+          throw new Error(`Field identifier must be provided`);
+        }
+
+        /**
+         * @class
+         * @alias FieldInstance
+         * @experimental
+         * @since 1.1.0
+         */
+        const fieldSels = {
+          fieldName,
+          /**
+           * Mounts the field as a listbox into the provided HTMLElement.
+           * @param {HTMLElement} element
+           * @param {object=} options Settings for the embedded listbox
+           * @param {string=} options.title Custom title, defaults to fieldname
+           * @param {string=} [options.direction=ltr] Direction setting ltr|rtl.
+           * @param {string=} [options.listLayout=vertical] Layout direction vertical|horizontal
+           * @param {boolean=} [options.search=true] To show the search bar
+           * @param {boolean=} [options.stateName="$"] Sets the state to make selections in
+           * @experimental
+           * @since 1.1.0
+           * @example
+           * fieldInstance.mount(element);
+           */
+          mount(element, options = {}) {
+            if (!element) {
+              throw new Error(`Element for ${fieldName} not provided`);
+            }
+            if (this._instance) {
+              throw new Error(`Field ${fieldName} already mounted`);
+            }
+            this._instance = ListBoxPortal({
+              element,
+              app,
+              fieldIdentifier,
+              options,
+              stateName: options.stateName || '$',
+            });
+            root.add(this._instance);
+          },
+          /**
+           * Unmounts the field listbox from the DOM.
+           * @experimental
+           * @since 1.1.0
+           * @example
+           * listbox.unmount();
+           */
+          unmount() {
+            if (this._instance) {
+              root.remove(this._instance);
+              this._instance = null;
+            }
+          },
+        };
+        return fieldSels;
+      },
+      __DO_NOT_USE__: {
+        types,
+      },
     };
 
-    corona.public.nebbie = api;
+    halo.public.nebbie = api;
+    halo.types = types;
 
     return api;
   }
 
   /**
-   * Creates a new `nucleus` scope bound to the specified `configuration`.
+   * Creates a new `embed` scope bound to the specified `configuration`.
    *
    * The configuration is merged with all previous scopes.
-   * @memberof nucleus
+   * @memberof embed
    * @param {Configuration} configuration - The configuration object
-   * @returns {nucleus}
+   * @returns {embed}
    * @example
-   * import nucleus from '@nebula.js/nucleus';
+   * import { embed } from '@nebula.js/stardust';
    * // create a 'master' config which registers all types
-   * const m = nucleus.createConfiguration({
+   * const m = embed.createConfiguration({
    *   types: [{
    *     name: 'mekko',
    *     version: '1.0.0',
@@ -337,18 +417,18 @@ function nuked(configuration = {}) {
    *
    * m(app).render({ type: 'mekko' }); // will render the object with default theme
    * d(app).render({ type: 'mekko' }); // will render the object with 'dark' theme
-   * nucleus(app).render({ type: 'mekko' }); // will throw error since 'mekko' is not a register type on the default instance
+   * embed(app).render({ type: 'mekko' }); // will throw error since 'mekko' is not a register type on the default instance
    */
-  nucleus.createConfiguration = c => nuked(mergeConfigs(configuration, c));
-  nucleus.config = configuration;
+  embed.createConfiguration = (c) => nuked(mergeConfigs(configuration, c));
+  embed.config = configuration;
 
-  return nucleus;
+  return embed;
 }
 
 /**
  * @interface ThemeInfo
  * @property {string} id Theme identifier
- * @property {function(): Promise<ThemeJSON>} load A function that should return a Promise that resolve to a raw JSON theme
+ * @property {function(): Promise<ThemeJSON>} load A function that should return a Promise that resolves to a raw JSON theme.
  */
 
 export default nuked(DEFAULT_CONFIG);

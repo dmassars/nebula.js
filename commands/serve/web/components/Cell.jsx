@@ -1,3 +1,4 @@
+/* eslint no-underscore-dangle:0 */
 import React, { useContext, useEffect, useState, useCallback, useRef } from 'react';
 
 import { Grid, Toolbar, IconButton, CircularProgress } from '@material-ui/core';
@@ -12,7 +13,7 @@ import VizContext from '../contexts/VizContext';
 
 import Chart from './Chart';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
   secondaryIcon: {
     color: theme.palette.text.secondary,
   },
@@ -22,7 +23,7 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-export default function({ id, expandable, minHeight }) {
+export default function ({ id, expandable, minHeight }) {
   const language = 'en-US'; // TODO - useLocale
   const app = useContext(AppContext);
   const [model, setModel] = useState(null);
@@ -37,13 +38,13 @@ export default function({ id, expandable, minHeight }) {
 
   const vizRef = useRef();
   useEffect(() => {
-    const v = app.getObject(id).then(m => {
+    const v = app.getObject(id).then((m) => {
       setModel(m);
       return m;
     });
 
     return () => {
-      v.then(m => m.emit('close'));
+      v.then((m) => m.emit('close'));
     };
   }, [id]);
 
@@ -79,7 +80,7 @@ export default function({ id, expandable, minHeight }) {
       }
       if (doExport) {
         setExporting(true);
-        vizRef.current.viz.exportImage().then(res => {
+        vizRef.current.viz.__DO_NOT_USE__.exportImage().then((res) => {
           if (res && res.url) {
             window.open(res.url);
           }
@@ -87,7 +88,7 @@ export default function({ id, expandable, minHeight }) {
         });
       } else {
         const containerSize = vizRef.current.el.getBoundingClientRect();
-        vizRef.current.viz.takeSnapshot().then(snapshot => {
+        vizRef.current.viz.__DO_NOT_USE__.takeSnapshot().then((snapshot) => {
           fetch('/njs/snapshot', {
             method: 'POST',
             headers: {

@@ -1,12 +1,12 @@
 /* eslint no-param-reassign: 0 */
-async function renderSnapshot({ nucleus, element, snapshot: key }) {
+async function renderSnapshot({ embed, element, snapshot: key }) {
   let snapshot = {};
-  const renderError = e => {
+  const renderError = (e) => {
     element.innerHTML = `<p>${e.message}</p>`;
     element.setAttribute('data-njs-error', e.message);
   };
   try {
-    snapshot = typeof key === 'string' ? await nucleus.config.snapshot.get(key) : key;
+    snapshot = typeof key === 'string' ? await embed.config.snapshot.get(key) : key;
   } catch (e) {
     renderError(e);
     throw e;
@@ -17,7 +17,7 @@ async function renderSnapshot({ nucleus, element, snapshot: key }) {
     layout,
   } = snapshot;
 
-  const objectModel = props => ({
+  const objectModel = (props) => ({
     id: `${+new Date()}-object`,
     async getLayout() {
       return props;
@@ -28,7 +28,7 @@ async function renderSnapshot({ nucleus, element, snapshot: key }) {
 
   const app = {
     id: `${+new Date()}-app`,
-    createSessionObject: async props => objectModel(props),
+    createSessionObject: async (props) => objectModel(props),
     async getObject(id) {
       if (id === layout.qInfo.qId) {
         return objectModel(layout);
@@ -38,13 +38,13 @@ async function renderSnapshot({ nucleus, element, snapshot: key }) {
     getAppLayout: async () => appLayout || {},
   };
 
-  const nebbie = await nucleus(app, {
+  const nebbie = await embed(app, {
     context: {
       theme,
       language,
-      // do NOT override constraints to allow the passed in nuked config to control it instead,
+      // do NOT override constraints to allow the passed in embedding config to control it instead,
       // however, since it's a snapshot the 'select' constraint will always be set to true from
-      // the nucleus internals
+      // the embed internals
       // constraints: {}
     },
   });
@@ -63,7 +63,7 @@ async function renderSnapshot({ nucleus, element, snapshot: key }) {
           }
     );
   } catch (e) {
-    renderError(e || { message: 'Failed to render supernova' });
+    renderError(e || { message: 'Failed to render visualization.' });
     throw e;
   }
 }

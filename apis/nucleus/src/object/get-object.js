@@ -1,26 +1,29 @@
 import init from './initiate';
-import { modelStore, rpcRequestModelStore } from '../stores/modelStore';
+import { modelStore, rpcRequestModelStore } from '../stores/model-store';
 
 /**
  * @interface BaseConfig
+ * @description Basic rendering configuration for rendering an object
  * @property {HTMLElement} element
  * @property {object=} options
+ * @property {Plugin[]} [plugins]
  */
 
 /**
  * @interface GetConfig
+ * @description Rendering configuration for rendering an existing object
  * @extends BaseConfig
  * @property {string} id
  */
 
-export default async function getObject({ id, options, element }, corona) {
+export default async function getObject({ id, options, plugins, element }, halo) {
   const key = `${id}`;
   let rpc = rpcRequestModelStore.get(key);
   if (!rpc) {
-    rpc = corona.app.getObject(id);
+    rpc = halo.app.getObject(id);
     rpcRequestModelStore.set(key, rpc);
   }
   const model = await rpc;
   modelStore.set(key, model);
-  return init(model, { options, element }, corona);
+  return init(model, { options, plugins, element }, halo);
 }

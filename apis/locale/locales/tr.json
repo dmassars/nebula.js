@@ -1,0 +1,142 @@
+{
+  "Cancel": {
+    "value": "İptal",
+    "comment": "Verb, typically button label",
+    "version": "xepUYpi/K4YBC6rYI72I/g=="
+  },
+  "CurrentSelections.All": {
+    "value": "TÜMÜ",
+    "comment": "Text shown when all values are selected",
+    "version": "fk65TEKNv/WPAAGR12wvHw=="
+  },
+  "CurrentSelections.Of": {
+    "value": "{0} / {1}",
+    "comment": "Text shown between the selected fields count {0} and total fields count {1}",
+    "version": "l99iJM6C+Sm7L6wu1tXfOQ=="
+  },
+  "Listbox.Search": {
+    "value": "Liste kutusunda ara",
+    "comment": "Action text to search in listbox",
+    "version": "XqaXqel4sY8npmjHCNH24Q=="
+  },
+  "Menu.More": {
+    "value": "Daha fazla",
+    "comment": "Menu option to display list of additional actions to choose from (ffd 20200520)",
+    "version": "jiJrffSuPx8BgEKJE7MlEQ=="
+  },
+  "Navigate.Back": {
+    "value": "Bir adım geri",
+    "comment": "Action text to step back, as opposite to forward, a form of navigation",
+    "version": "oDZ2xM9nmJfn3fZ8IUxOWg=="
+  },
+  "Navigate.Forward": {
+    "value": "Bir adım ileri",
+    "comment": "Action text to step forward, a form of navigation",
+    "version": "Zao/kpqn8++ptVhhOi2IYA=="
+  },
+  "OK": {
+    "value": "Tamam",
+    "comment": "Verb, typically button label",
+    "version": "2COCF0f9Drb54EThSLR/WQ=="
+  },
+  "Object.Update.Active": {
+    "value": "Veriler yükleniyor",
+    "comment": "Status text shown when a object's data is being updated",
+    "version": "QD21OoMPzESzOjMqrRs53Q=="
+  },
+  "Object.Update.Cancelled": {
+    "value": "Veri güncelleştirme iptal edildi",
+    "comment": "Status text shown when data update has been cancelled",
+    "version": "K+VsoedryUo6EV8gXBN7Cg=="
+  },
+  "Retry": {
+    "value": "Yeniden dene",
+    "comment": "Verb, typically button label",
+    "version": "57j2gQLhNkHSlTwlN2lEqA=="
+  },
+  "Selection.Cancel": {
+    "value": "Seçimi iptal et",
+    "comment": "Action text to cancel selections",
+    "version": "Hq4r6KjpxCnGPFblBX5PKQ=="
+  },
+  "Selection.Clear": {
+    "value": "Seçimi temizle",
+    "comment": "Action text to clear selections",
+    "version": "/YCR3eBUUx+fS6lPwzb9zg=="
+  },
+  "Selection.ClearAll": {
+    "value": "Tüm seçimleri temizle",
+    "comment": "Action text to clear all selections",
+    "version": "thrBuqZXiAY4996WyiWKYA=="
+  },
+  "Selection.ClearAllStates": {
+    "value": "Tüm durumları temizle",
+    "comment": "Action text to clear all states",
+    "version": "PxBt5eIeMH4qia4in7ZxfQ=="
+  },
+  "Selection.Confirm": {
+    "value": "Seçimi onayla",
+    "comment": "Action text to confirm selections",
+    "version": "I0pcv4Npgy3JHMP4sVqOsA=="
+  },
+  "Selection.Menu": {
+    "value": "Seçim menüsü",
+    "comment": "Action text to toggle selection menu",
+    "version": "nDCUXVXdm/A1LY1AXhtHpQ=="
+  },
+  "Selection.SelectAll": {
+    "value": "Tümünü seç",
+    "comment": "Action text to select all selections",
+    "version": "aQFJibEVO/2enO+G4h7rzA=="
+  },
+  "Selection.SelectAlternative": {
+    "value": "Alternatifi seç",
+    "comment": "Action text to select alternative selections",
+    "version": "HDy2isqI6jmzm3Ut3S8lqQ=="
+  },
+  "Selection.SelectExcluded": {
+    "value": "Hariç tutulanı seç",
+    "comment": "Action text to select excluded selections",
+    "version": "+NXcu+39fboxO3y3zLnW6A=="
+  },
+  "Selection.SelectPossible": {
+    "value": "Olasıyı seç",
+    "comment": "Action text to select possible selections",
+    "version": "UYEx1K96g9h4HCK3GH/6kg=="
+  },
+  "Visualization.Incomplete": {
+    "value": "Tamamlanmamış görselleştirme",
+    "comment": "Status text shown when a visualization is incomplete",
+    "version": "e43DhEHmw0rg9reP7gGR/w=="
+  },
+  "Visualization.Incomplete.Dimensions": {
+    "value": "{0}/{1} boyut",
+    "comment": "Text showing the number of current {0} dimensions over the total {1} number of dimensions",
+    "version": "5sNpFZSWnaPBLcsfvp6U9Q=="
+  },
+  "Visualization.Incomplete.Measures": {
+    "value": "{0}/{1} hesaplama",
+    "comment": "Text showing the number of current {0} measures over the total {1} number of measures",
+    "version": "IJqIrqfli22JMSiCEIw36g=="
+  },
+  "Visualization.Invalid.Dimension": {
+    "value": "Geçersiz boyut",
+    "comment": "Status text shown when a dimension is not valid",
+    "version": "4fUmk2asmoQRF7rbS4T9hQ=="
+  },
+  "Visualization.Invalid.Measure": {
+    "value": "Geçersiz hesaplama",
+    "comment": "Status text shown when a measure is not valid",
+    "version": "mtJsFdDPR5DM0WeijBn7MA=="
+  },
+  "Visualization.LayoutError": {
+    "value": "Hata",
+    "comment": "Status text shown when a visualization has layout errors",
+    "version": "a5/zvy8kVRtuPTFFkunhhw=="
+  },
+  "Visualization.UnfulfilledCalculationCondition": {
+    "value": "Hesaplama koşulu yerine getirilmedi",
+    "comment": "Message displayed when a calculation condition is not fulfilled",
+    "version": "Hj3EiDijTWZ+MhDaqSx/uQ=="
+  }
+}

@@ -14,11 +14,11 @@ const translator = {
 
 const t = createTheme('light');
 
-addDecorator(storyFn => {
+addDecorator((storyFn) => {
   return <ThemeProvider theme={t}>{storyFn()}</ThemeProvider>;
 });
 
-addDecorator(storyFn => {
+addDecorator((storyFn) => {
   return <InstanceContext.Provider value={{ translator }}>{storyFn()}</InstanceContext.Provider>;
 });
 

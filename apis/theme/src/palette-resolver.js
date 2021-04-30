@@ -1,8 +1,8 @@
 /**
  * @interface Theme~ScalePalette
  * @property {string} key
- * @property {'gradient'|'class'} type
- * @property {string[]} colors
+ * @property {'gradient'|'class-pyramid'} type
+ * @property {string[]|Array<Array<string>>} colors
  */
 
 /**
@@ -24,7 +24,7 @@ export default function theme(resolvedTheme) {
   return {
     dataScales() {
       const pals = [];
-      resolvedTheme.scales.forEach(s => {
+      resolvedTheme.scales.forEach((s) => {
         pals.push({
           key: s.propertyValue,
           name: s.name,
@@ -39,7 +39,7 @@ export default function theme(resolvedTheme) {
     },
     dataPalettes() {
       const pals = [];
-      resolvedTheme.palettes.data.forEach(s => {
+      resolvedTheme.palettes.data.forEach((s) => {
         pals.push({
           key: s.propertyValue,
           name: s.name,
@@ -53,7 +53,7 @@ export default function theme(resolvedTheme) {
     },
     uiPalettes() {
       const pals = [];
-      resolvedTheme.palettes.ui.forEach(s => {
+      resolvedTheme.palettes.ui.forEach((s) => {
         pals.push({
           key: 'ui',
           name: s.name,

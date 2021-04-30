@@ -1,15 +1,15 @@
 /* eslint import/prefer-default-export:0 */
 
-import 'regenerator-runtime/runtime'; // temporary polyfill for transpiled async/await in supernova
-import { hook } from '@nebula.js/supernova';
+import { __DO_NOT_USE__ } from '@nebula.js/stardust';
+
+const { hook } = __DO_NOT_USE__;
 
 if (!global.requestAnimationFrame) {
-  global.requestAnimationFrame = cb => setTimeout(cb, 10);
-  global.cancelAnimationFrame = id => clearTimeout(id);
+  global.requestAnimationFrame = (cb) => setTimeout(cb, 10);
+  global.cancelAnimationFrame = (id) => clearTimeout(id);
 }
 export function create(definition, context = {}) {
   const hooked = hook(definition);
-
   const component = {
     context: {
       ...context,
@@ -19,6 +19,11 @@ export function create(definition, context = {}) {
     },
     fn: hooked.fn,
   };
+
+  let actions = [];
+  hooked.observeActions(component, (updatedActions) => {
+    actions = updatedActions;
+  });
 
   hooked.initiate(component);
 
@@ -32,6 +37,9 @@ export function create(definition, context = {}) {
       }
       return hooked.run(component);
     },
+    updateRectOnNextUpdate() {
+      hooked.updateRectOnNextRun(component);
+    },
     unmount() {
       return hooked.teardown(component);
     },
@@ -39,8 +47,7 @@ export function create(definition, context = {}) {
       return hooked.runSnaps(component, component.context.layout);
     },
     actions() {
-      // TODO
-      return [];
+      return actions;
     },
   };
 }

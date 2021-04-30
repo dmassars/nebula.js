@@ -13,11 +13,7 @@ const favicon = path.resolve(__dirname, '../../../docs/assets/njs.png');
 const crypto = require('crypto');
 const { version } = require('../package.json');
 
-const versionHash = crypto
-  .createHash('md5')
-  .update(version)
-  .digest('hex')
-  .slice(0, 4);
+const versionHash = crypto.createHash('md5').update(version).digest('hex').slice(0, 4);
 
 const cfg = ({ srcDir, distDir, dev = false, serveConfig = {} }) => {
   const config = {
@@ -27,17 +23,18 @@ const cfg = ({ srcDir, distDir, dev = false, serveConfig = {} }) => {
       eDev: [path.resolve(srcDir, 'eDev')],
       eHub: [path.resolve(srcDir, 'eHub')],
     },
-    devtool: dev ? 'cheap-module-eval-source-map' : 'source-map',
+    devtool: dev ? 'cheap-module-eval-source-map' : false,
     output: {
       path: distDir,
       filename: '[name].js',
     },
     resolve: {
       alias: {
-        '@nebula.js/nucleus': path.resolve(__dirname, '../../../apis/nucleus'),
+        '@nebula.js/stardust': path.resolve(__dirname, '../../../apis/stardust/src'),
         '@nebula.js/snapshooter/client': path.resolve(__dirname, '../../../apis/snapshooter/src/renderer'),
-        '@nebula.js/supernova': path.resolve(__dirname, '../../../apis/supernova/src'),
         '@nebula.js/theme': path.resolve(__dirname, '../../../apis/theme/src'),
+        '@nebula.js/conversion': path.resolve(__dirname, '../../../apis/conversion/src'),
+        '@nebula.js/locale/all.json$': path.resolve(__dirname, '../../../apis/locale/all.json'),
         '@nebula.js/locale': path.resolve(__dirname, '../../../apis/locale/src'),
         fixtures: path.resolve(__dirname, '../../../test/component'),
       },
@@ -47,12 +44,12 @@ const cfg = ({ srcDir, distDir, dev = false, serveConfig = {} }) => {
       rules: [
         {
           test: /\.css$/,
-          include: [/node_modules\/monaco-editor/],
+          include: [/node_modules[/\\]monaco-editor/],
           use: ['style-loader', 'css-loader'],
         },
         {
           test: /\.ttf$/,
-          include: [/node_modules\/monaco-editor/],
+          include: [/node_modules[/\\]monaco-editor/],
           use: ['file-loader'],
         },
         {
@@ -63,7 +60,7 @@ const cfg = ({ srcDir, distDir, dev = false, serveConfig = {} }) => {
         {
           test: /\.jsx?$/,
           sideEffects: false,
-          include: [srcDir, /nucleus/, /ui\/icons/],
+          include: [srcDir, /nucleus/, /ui[/\\]icons/],
           use: {
             loader: babelPath,
             options: {

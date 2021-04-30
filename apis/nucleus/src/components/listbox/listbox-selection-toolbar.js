@@ -3,27 +3,16 @@ import { selectAlternative } from '@nebula.js/ui/icons/select-alternative';
 import { selectPossible } from '@nebula.js/ui/icons/select-possible';
 import { selectExcluded } from '@nebula.js/ui/icons/select-excluded';
 
-export default ({ layout, model, translator, onSelected = () => {} }) => {
-  const canSelectAll = () => {
-    return ['qOption', 'qAlternative', 'qExcluded', 'qDeselected'].some(sc => {
-      return layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0;
-    });
-  };
-  const canSelectPossible = () => {
-    return ['qOption'].some(sc => {
-      return layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0;
-    });
-  };
-  const canSelectAlternative = () => {
-    return ['qAlternative'].some(sc => {
-      return layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0;
-    });
-  };
-  const canSelectExcluded = () => {
-    return ['qAlternative', 'qExcluded'].some(sc => {
-      return layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0;
-    });
-  };
+export default ({ layout, model, translator }) => {
+  const canSelectAll = () =>
+    ['qOption', 'qAlternative', 'qExcluded', 'qDeselected'].some(
+      (sc) => layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0
+    );
+  const canSelectPossible = () => ['qOption'].some((sc) => layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0);
+  const canSelectAlternative = () =>
+    ['qAlternative'].some((sc) => layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0);
+  const canSelectExcluded = () =>
+    ['qAlternative', 'qExcluded'].some((sc) => layout.qListObject.qDimensionInfo.qStateCounts[sc] > 0);
 
   return [
     {
@@ -34,7 +23,6 @@ export default ({ layout, model, translator, onSelected = () => {} }) => {
       enabled: canSelectAll,
       action: () => {
         model.selectListObjectAll('/qListObjectDef');
-        onSelected();
       },
     },
     {
@@ -45,7 +33,6 @@ export default ({ layout, model, translator, onSelected = () => {} }) => {
       enabled: canSelectPossible,
       action: () => {
         model.selectListObjectPossible('/qListObjectDef');
-        onSelected();
       },
     },
     {
@@ -56,7 +43,6 @@ export default ({ layout, model, translator, onSelected = () => {} }) => {
       enabled: canSelectAlternative,
       action: () => {
         model.selectListObjectAlternative('/qListObjectDef');
-        onSelected();
       },
     },
     {
@@ -67,7 +53,6 @@ export default ({ layout, model, translator, onSelected = () => {} }) => {
       enabled: canSelectExcluded,
       action: () => {
         model.selectListObjectExcluded('/qListObjectDef');
-        onSelected();
       },
     },
   ];

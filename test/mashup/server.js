@@ -14,13 +14,14 @@ module.exports = async () => {
   const args = yargs(process.argv.slice(2)).argv;
 
   // eslint-disable-next-line
-  snapshooter = require('@nebula.js/snapshooter')({
+  snapshooter = require('@nebula.js/cli-serve/lib/snapshot-server')({
     snapshotUrl: `${url}/snaps/single.html`,
     chrome: args.chrome || {},
   });
 
   app.use(express.static(path.resolve(__dirname)));
   app.use('/apis', express.static(path.resolve(__dirname, '../../apis')));
+  app.use('/fixtures', express.static(path.resolve(__dirname, '../fixtures')));
   app.use('/node_modules', express.static(path.resolve(__dirname, '../../node_modules')));
 
   app.use(
@@ -60,7 +61,7 @@ module.exports = async () => {
     }
   });
 
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     server = app.listen(port, () => {
       console.log(`Running mashup server at localhost:${port}`);
       resolve();

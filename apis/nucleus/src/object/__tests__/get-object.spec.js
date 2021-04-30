@@ -19,7 +19,7 @@ describe('get-object', () => {
   beforeEach(() => {
     objectModel = sandbox.stub();
     init.returns('api');
-    context = { app: { id: 'appid', getObject: async id => Promise.resolve(objectModel(id)) } };
+    context = { app: { id: 'appid', getObject: async (id) => Promise.resolve(objectModel(id)) } };
   });
 
   afterEach(() => {
@@ -38,8 +38,8 @@ describe('get-object', () => {
 
   it('should call init', async () => {
     objectModel.withArgs('x').returns(model);
-    const ret = await create({ id: 'x', options: 'op', element: 'el' }, context);
+    const ret = await create({ id: 'x', options: 'op', plugins: [], element: 'el' }, context);
     expect(ret).to.equal('api');
-    expect(init).to.have.been.calledWithExactly(model, { options: 'op', element: 'el' }, context);
+    expect(init).to.have.been.calledWithExactly(model, { options: 'op', plugins: [], element: 'el' }, context);
   });
 });

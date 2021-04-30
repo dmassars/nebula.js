@@ -35,11 +35,14 @@ export function initiate(component, { explicitResize = false } = {}) {
     },
     list: [],
     snaps: [],
-    actions: [],
+    actions: {
+      list: [],
+    },
     pendingEffects: [],
     pendingLayoutEffects: [],
     pendingPromises: [],
-    config: {
+    resizer: {
+      setters: [],
       explicitResize,
     },
   };
@@ -52,9 +55,11 @@ export function teardown(component) {
   component.__hooks.list.length = 0;
   component.__hooks.pendingEffects.length = 0;
   component.__hooks.pendingLayoutEffects.length = 0;
-  component.__hooks.actions.length = 0;
-  component.__hooks.dispatchActions = null;
+  component.__hooks.actions = null;
   component.__hooks.imperativeHandle = null;
+  component.__hooks.resizer = null;
+
+  component.__actionsDispatch = null;
 
   clearTimeout(component.__hooks.micro);
   cancelAnimationFrame(component.__hooks.macro);
@@ -89,12 +94,13 @@ export async function run(component) {
   }
 
   const hooks = currentComponent.__hooks;
+  dispatchActions(currentComponent);
 
   currentIndex = undefined;
   currentComponent = undefined;
 
   if (!hooks.chain.promise) {
-    hooks.chain.promise = new Promise(resolve => {
+    hooks.chain.promise = new Promise((resolve) => {
       hooks.chain.resolve = resolve;
     });
   }
@@ -107,7 +113,7 @@ export async function run(component) {
 
 function flushPending(list, skipUpdate) {
   try {
-    list.forEach(fx => {
+    list.forEach((fx) => {
       // teardown existing
       typeof fx.teardown === 'function' ? fx.teardown() : null;
 
@@ -143,13 +149,9 @@ function maybeEndChain(hooks) {
 
 export function runSnaps(component, layout) {
   try {
-    return Promise.all(
-      component.__hooks.snaps.map(h => {
-        return Promise.resolve(h.fn(layout));
-      })
-    ).then(snaps => {
-      return snaps[snaps.length - 1];
-    });
+    return Promise.all(component.__hooks.snaps.map((h) => Promise.resolve(h.fn(layout)))).then(
+      (snaps) => snaps[snaps.length - 1]
+    );
   } catch (e) {
     console.error(e);
   }
@@ -161,20 +163,23 @@ export function getImperativeHandle(component) {
 }
 
 function dispatchActions(component) {
-  component._dispatchActions && component._dispatchActions(component.__hooks.actions.slice());
+  if (component.__actionsDispatch && component.__hooks.actions.changed) {
+    component.__actionsDispatch(component.__hooks.actions.list.slice());
+    component.__hooks.actions.changed = false;
+  }
 }
 
 export function observeActions(component, callback) {
-  component._dispatchActions = callback;
-
+  component.__actionsDispatch = callback;
   if (component.__hooks) {
+    component.__hooks.actions.changed = true;
     dispatchActions(component);
   }
 }
 
 function getHook(idx) {
   if (typeof currentComponent === 'undefined') {
-    throw new Error('Invalid nebula hook call. Hooks can only be called inside a supernova component.');
+    throw new Error('Invalid stardust hook call. Hooks can only be called inside a visualization component.');
   }
   const hooks = currentComponent.__hooks;
   if (idx >= hooks.list.length) {
@@ -210,15 +215,9 @@ function useInternalContext(name) {
   return ctx[name];
 }
 
-// function useInternalEnv(name) {
-//   getHook(++currentIndex);
-//   const { env } = currentComponent;
-//   return env[name];
-// }
-
 export function updateRectOnNextRun(component) {
   if (component.__hooks) {
-    component.__hooks.updateRect = true;
+    component.__hooks.resizer.update = true;
   }
 }
 
@@ -251,7 +250,7 @@ export function hook(cb) {
  * @param {S|function():S} initialState - The initial state.
  * @returns {Array<S,SetStateFn<S>>} The value and a function to update it.
  * @example
- * import { useState } from '@nebula.js/supernova';
+ * import { useState } from '@nebula.js/stardust';
  * // ...
  * // initiate with simple primitive value
  * const [zoomed, setZoomed] = useState(false);
@@ -268,7 +267,7 @@ export function useState(initial) {
   if (!h.value) {
     // initiate
     h.component = currentComponent;
-    const setState = s => {
+    const setState = (s) => {
       if (h.component.__hooks.obsolete) {
         if (__NEBULA_DEV__) {
           throw new Error(
@@ -293,12 +292,12 @@ export function useState(initial) {
  */
 
 /**
- * Triggers a callback function when a dependant value changes.
+ * Triggers a callback function when a dependent value changes.
  * @entry
  * @param {EffectCallback} effect - The callback.
- * @param {Array<any>=} deps - The dependencies which should trigger the callback.
+ * @param {Array<any>=} deps - The dependencies that should trigger the callback.
  * @example
- * import { useEffect } from '@nebula.js/supernova';
+ * import { useEffect } from '@nebula.js/stardust';
  * // ...
  * useEffect(() => {
  *   console.log('mounted');
@@ -337,14 +336,14 @@ function useLayoutEffect(cb, deps) {
 }
 
 /**
- * Creates a stateful value when a dependant changes.
+ * Creates a stateful value when a dependent changes.
  * @entry
  * @template T
  * @param {function():T} factory - The factory function.
  * @param {Array<any>} deps - The dependencies.
  * @returns {T} The value returned from the factory function.
  * @example
- * import { useMemo } from '@nebula.js/supernova';
+ * import { useMemo } from '@nebula.js/stardust';
  * // ...
  * const v = useMemo(() => {
  *   return doSomeHeavyCalculation();
@@ -364,15 +363,15 @@ export function useMemo(fn, deps) {
 }
 
 /**
- * Runs a callback function when a dependant changes.
+ * Runs a callback function when a dependent changes.
  * @entry
  * @template P
  * @param {function():Promise<P>} factory - The factory function that calls the promise.
  * @param {Array<any>=} deps - The dependencies.
  * @returns {Array<P,Error>} The resolved value.
  * @example
- * import { usePromise } from '@nebula.js/supernova';
- * import { useModel } from '@nebula.js/supernova';
+ * import { usePromise } from '@nebula.js/stardust';
+ * import { useModel } from '@nebula.js/stardust';
  * // ...
  * const model = useModel();
  * const [resolved, rejected] = usePromise(() => model.getLayout(), []);
@@ -406,7 +405,7 @@ export function usePromise(p, deps) {
     // });
 
     p()
-      .then(v => {
+      .then((v) => {
         if (canceled) {
           return;
         }
@@ -417,7 +416,7 @@ export function usePromise(p, deps) {
           state: 'resolved',
         });
       })
-      .catch(e => {
+      .catch((e) => {
         if (canceled) {
           return;
         }
@@ -441,11 +440,11 @@ export function usePromise(p, deps) {
 
 // ---- composed hooks ------
 /**
- * Gets the HTMLElement this supernova is rendered into.
+ * Gets the HTMLElement this visualization is rendered into.
  * @entry
  * @returns {HTMLElement}
  * @example
- * import { useElement } from '@nebula.js/supernova';
+ * import { useElement } from '@nebula.js/stardust';
  * // ...
  * const el = useElement();
  * el.innerHTML = 'Hello!';
@@ -463,11 +462,11 @@ export function useElement() {
  */
 
 /**
- * Gets the size of the HTMLElement the supernova is rendered into.
+ * Gets the size of the HTMLElement the visualization is rendered into.
  * @entry
  * @returns {Rect} The size of the element.
  * @example
- * import { useRect } from '@nebula.js/supernova';
+ * import { useRect } from '@nebula.js/stardust';
  * // ...
  * const rect = useRect();
  * useEffect(() => {
@@ -476,35 +475,48 @@ export function useElement() {
  */
 export function useRect() {
   const element = useElement();
+  const ref = currentComponent.__hooks.resizer;
+
   const [rect, setRect] = useState(() => {
     const { left, top, width, height } = element.getBoundingClientRect();
     return { left, top, width, height };
   });
 
-  const [ref] = useState(() => ({ current: {}, component: currentComponent }));
   ref.current = rect;
+
+  if (ref.setters.indexOf(setRect) === -1) {
+    ref.setters.push(setRect);
+  }
+
   // a forced resize should alwas update size regardless of whether ResizeObserver is available
-  if (ref.resize && currentComponent.__hooks.updateRect) {
-    currentComponent.__hooks.updateRect = false;
+  if (ref.update && ref.resize) {
+    ref.update = false;
     ref.resize();
   }
+
   useLayoutEffect(() => {
+    if (ref.initiated) {
+      return undefined;
+    }
+    ref.initiated = true;
+
     const handleResize = () => {
       // TODO - should we really care about left/top?
       const { left, top, width, height } = element.getBoundingClientRect();
       const r = ref.current;
 
       if (r.width !== width || r.height !== height || r.left !== left || r.top !== top) {
-        setRect({ left, top, width, height });
+        ref.setters.forEach((setR) => setR({ left, top, width, height }));
       }
     };
+
     ref.resize = () => {
       handleResize();
     };
 
     // if component is configured with explicitResize, then we skip the
     // size observer and let the user control the resize themselves
-    if (ref.component.__hooks.config.explicitResize) {
+    if (ref.explicitResize) {
       return () => {
         ref.resize = undefined;
       };
@@ -529,11 +541,11 @@ export function useRect() {
 }
 
 /**
- * Gets the layout of the generic object associated with this supernova.
+ * Gets the layout of the generic object associated with this visualization.
  * @entry
  * @returns {qae.GenericObjectLayout}
  * @example
- * import { useLayout } from '@nebula.js/supernova';
+ * import { useLayout } from '@nebula.js/stardust';
  * // ...
  * const layout = useLayout();
  * console.log(layout);
@@ -543,7 +555,7 @@ export function useLayout() {
 }
 
 /**
- * Gets the layout of the generic object associated with this supernova.
+ * Gets the layout of the generic object associated with this visualization.
  *
  * Unlike the regular layout, a _stale_ layout is not changed when a generic object enters
  * the modal state. This is mostly notable in that `qSelectionInfo.qInSelections` in the layout is
@@ -553,7 +565,7 @@ export function useLayout() {
  * @entry
  * @returns {qae.GenericObjectLayout}
  * @example
- * import { useStaleLayout } from '@nebula.js/supernova';
+ * import { useStaleLayout } from '@nebula.js/stardust';
  * // ...
  * const staleLayout = useStaleLayout();
  * console.log(staleLayout);
@@ -568,11 +580,11 @@ export function useStaleLayout() {
 }
 
 /**
- * Gets the layout of the app associated with this supernova.
+ * Gets the layout of the app associated with this visualization.
  * @entry
  * @returns {qae.NxAppLayout} The app layout
  * @example
- * import { useAppLayout } from '@nebula.js/supernova';
+ * import { useAppLayout } from '@nebula.js/stardust';
  * // ...
  * const appLayout = useAppLayout();
  * console.log(appLayout.qLocaleInfo);
@@ -582,11 +594,11 @@ export function useAppLayout() {
 }
 
 /**
- * Gets the generic object API of the generic object connected to this supernova.
+ * Gets the generic object API of the generic object connected to this visualization.
  * @entry
  * @returns {enigma.GenericObject|undefined}
  * @example
- * import { useModel } from '@nebula.js/supernova';
+ * import { useModel } from '@nebula.js/stardust';
  * // ...
  * const model = useModel();
  * useEffect(() => {
@@ -605,7 +617,7 @@ export function useModel() {
  * @entry
  * @returns {enigma.Doc|undefined} The doc API.
  * @example
- * import { useApp } from '@nebula.js/supernova';
+ * import { useApp } from '@nebula.js/stardust';
  * // ...
  * const app = useApp();
  * useEffect(() => {
@@ -624,7 +636,7 @@ export function useApp() {
  * @entry
  * @returns {enigma.Global|undefined} The global API.
  * @example
- * import { useGlobal } from '@nebula.js/supernova';
+ * import { useGlobal } from '@nebula.js/stardust';
  *
  * // ...
  * const g = useGlobal();
@@ -644,9 +656,9 @@ export function useGlobal() {
  * @entry
  * @returns {ObjectSelections} The object selections.
  * @example
- * import { useSelections } from '@nebula.js/supernova';
- * import { useElement } from '@nebula.js/supernova';
- * import { useEffect } from '@nebula.js/supernova';
+ * import { useSelections } from '@nebula.js/stardust';
+ * import { useElement } from '@nebula.js/stardust';
+ * import { useEffect } from '@nebula.js/stardust';
  * // ...
  * const selections = useSelections();
  * const element = useElement();
@@ -669,7 +681,7 @@ export function useSelections() {
  * @entry
  * @returns {Theme} The theme.
  * @example
- * import { useTheme } from '@nebula.js/supernova';
+ * import { useTheme } from '@nebula.js/stardust';
  *
  * const theme = useTheme();
  * console.log(theme.getContrastinColorTo('#ff0000'));
@@ -683,13 +695,53 @@ export function useTheme() {
  * @entry
  * @returns {Translator} The translator.
  * @example
- * import { useTranslator } from '@nebula.js/supernova';
+ * import { useTranslator } from '@nebula.js/stardust';
  * // ...
  * const translator = useTranslator();
  * console.log(translator.get('SomeString'));
  */
 export function useTranslator() {
   return useInternalContext('translator');
+}
+
+/**
+ * Gets the device type. ('touch' or 'desktop')
+ * @entry
+ * @returns {string} device type.
+ * @example
+ * import { useDeviceType } from '@nebula.js/stardust';
+ * // ...
+ * const deviceType = useDeviceType();
+ * if (deviceType === 'touch') { ... };
+ */
+export function useDeviceType() {
+  return useInternalContext('deviceType');
+}
+
+/**
+ * Gets the array of plugins provided when rendering the visualization.
+ * @entry
+ * @returns {Plugin[]} array of plugins.
+ * @example
+ * // provide plugins that can be used when rendering
+ * embed(app).render({
+ *   element,
+ *   type: 'my-chart',
+ *   plugins: [plugin]
+ * });
+ *
+ * @example
+ * // It's up to the chart implementation to make use of plugins in any way
+ * import { usePlugins } from '@nebula.js/stardust';
+ * // ...
+ * const plugins = usePlugins();
+ * plugins.forEach((plugin) => {
+ *   // Invoke plugin
+ *   plugin.fn();
+ * });
+ */
+export function usePlugins() {
+  return useInternalContext('plugins');
 }
 
 /**
@@ -714,7 +766,7 @@ export function useTranslator() {
  * @returns {A}
  *
  * @example
- * import { useAction } from '@nebula.js/supernova';
+ * import { useAction } from '@nebula.js/stardust';
  * // ...
  * const [zoomed, setZoomed] = useState(false);
  * const act = useAction(() => ({
@@ -735,7 +787,7 @@ export function useAction(fn, deps) {
 
   if (!ref.component) {
     ref.component = currentComponent;
-    currentComponent.__hooks.actions.push(ref);
+    currentComponent.__hooks.actions.list.push(ref);
   }
   useMemo(() => {
     const a = fn();
@@ -743,11 +795,13 @@ export function useAction(fn, deps) {
 
     ref.active = a.active || false;
     ref.disabled = a.disabled || false;
+    ref.hidden = a.hidden || false;
     ref.label = a.label || '';
     ref.getSvgIconShape = a.icon ? () => a.icon : undefined;
 
-    ref.key = a.key || ref.component.__hooks.actions.length;
-    dispatchActions(ref.component);
+    ref.key = a.key || ref.component.__hooks.actions.list.length;
+
+    ref.component.__hooks.actions.changed = true;
   }, deps);
 
   return ref.action;
@@ -761,22 +815,22 @@ export function useAction(fn, deps) {
  */
 
 /**
- * Gets the desired constraints that should be applied when rendering the supernova.
+ * Gets the desired constraints that should be applied when rendering the visualization.
  *
- * The constraints are set on the nuclues configuration before the supernova is rendered
- * and should respected by you when implementing the supernova.
+ * The constraints are set on the embed configuration before the visualization is rendered
+ * and should respected by you when implementing the visualization.
  * @entry
  * @returns {Constraints}
  * @example
- * // configure nucleus to disallow active interactions when rendering
- * nucleus(app, {
+ * // configure embed to disallow active interactions when rendering
+ * embed(app, {
  *   constraints: {
  *     active: true, // do not allow interactions
  *   }
  * }).render({ element, id: 'sdfsdf' });
  *
  * @example
- * import { useConstraints } from '@nebula.js/supernova';
+ * import { useConstraints } from '@nebula.js/stardust';
  * // ...
  * const constraints = useConstraints();
  * useEffect(() => {
@@ -797,19 +851,19 @@ export function useConstraints() {
 }
 
 /**
- * Gets the options object provided when rendering the supernova.
+ * Gets the options object provided when rendering the visualization.
  *
- * This is an empty object by default but enables customization of the supernova through this object.
+ * This is an empty object by default but enables customization of the visualization through this object.
  * Options are different from setting properties on the generic object in that options
- * are only temporary settings applied to the supernova when rendered.
+ * are only temporary settings applied to the visualization when rendered.
  *
  * You have the responsibility to provide documentation of the options you support, if any.
  * @entry
  * @returns {object}
  *
  * @example
- * // when rendering the supernova with nucleus, anything can be set in options
- * nucleus(app).render({
+ * // when embedding the visualization, anything can be set in options
+ * embed(app).render({
  *   element,
  *   type: 'my-chart',
  *   options: {
@@ -819,8 +873,8 @@ export function useConstraints() {
  *
  * @example
  * // it is up to you use and implement the provided options
- * import { useOptions } from '@nebula.js/supernova';
- * import { useEffect } from '@nebula.js/supernova';
+ * import { useOptions } from '@nebula.js/stardust';
+ * import { useEffect } from '@nebula.js/stardust';
  * // ...
  * const options = useOptions();
  * useEffect(() => {
@@ -837,10 +891,10 @@ export function useOptions() {
 }
 
 /**
- * TODO before making public - expose getImperativeHandle on SupernovaController
+ * TODO before making public - expose getImperativeHandle on Viz
  * Exposes an API to the external environment.
  *
- * This is an empty object by default, but enables you to provide a custom API of your supernova to
+ * This is an empty object by default, but enables you to provide a custom API of your visualization to
  * make it possible to control after it has been rendered.
  *
  * You can only use this hook once, calling it more than once is considered an error.
@@ -850,7 +904,7 @@ export function useOptions() {
  * @param {function():T} factory
  * @param {Array<any>=} deps
  * @example
- * import { useImperativeHandle } form '@nebula.js/supernova';
+ * import { useImperativeHandle } form '@nebula.js/stardust';
  * // ...
  * useImperativeHandle(() => ({
  *   resetZoom() {
@@ -859,9 +913,9 @@ export function useOptions() {
  * }));
  *
  * @example
- * // when rendering the supernova with nucleus, you can get a handle to this API
- * // and use it to control the supernova
- * const ctl = await nucleus(app).render({
+ * // when embedding the visualization, you can get a handle to this API
+ * // and use it to control the visualization
+ * const ctl = await embed(app).render({
  *   element,
  *   type: 'my-chart',
  * });
@@ -890,9 +944,9 @@ export function useImperativeHandle(fn, deps) {
  * @entry
  * @param {function(qae.GenericObjectLayout): Promise<qae.GenericObjectLayout>} snapshotCallback
  * @example
- * import { onTakeSnapshot } from '@nebula.js/supernova';
- * import { useState } from '@nebula.js/supernova';
- * import { useLayout } from '@nebula.js/supernova';
+ * import { onTakeSnapshot } from '@nebula.js/stardust';
+ * import { useState } from '@nebula.js/stardust';
+ * import { useLayout } from '@nebula.js/stardust';
  *
  * const layout = useLayout();
  * const [zoomed] = useState(layout.isZoomed || false);

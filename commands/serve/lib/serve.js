@@ -15,7 +15,7 @@ const useEngine = require('./engine');
 const initiateWatch = async ({ snPath, snName, host }) => {
   // TODO - timeout
   let onInitiated;
-  const done = new Promise(resolve => {
+  const done = new Promise((resolve) => {
     onInitiated = resolve;
   });
 
@@ -36,7 +36,7 @@ const initiateWatch = async ({ snPath, snName, host }) => {
   });
 
   choker.on('change', () => {
-    [...ws.clients].forEach(client => {
+    [...ws.clients].forEach((client) => {
       client.send(
         JSON.stringify({
           changed: [snName],
@@ -92,9 +92,10 @@ const initiateWatch = async ({ snPath, snName, host }) => {
   };
 };
 
-module.exports = async argv => {
-  const context = process.cwd();
+module.exports = async (argv) => {
+  let context = process.cwd();
   let defaultServeConfig = {};
+  let runFromDirectory = false;
 
   if (!argv.$0) {
     defaultServeConfig = initConfig(yargs([])).argv;
@@ -119,13 +120,24 @@ module.exports = async argv => {
     snUrl = serveConfig.entry;
   } else if (serveConfig.entry) {
     snPath = path.resolve(context, serveConfig.entry);
-    const parsed = path.parse(snPath);
-    snName = parsed.name;
+    const stat = fs.statSync(snPath);
+    if (stat.isDirectory()) {
+      runFromDirectory = true;
+      context = snPath;
+    } else {
+      const parsed = path.parse(snPath);
+      snName = parsed.name;
+    }
   } else {
+    runFromDirectory = true;
+  }
+
+  if (runFromDirectory) {
     if (serveConfig.build !== false) {
       watcher = await build({
         watch: true,
         config: serveConfig.config,
+        cwd: context,
       });
     }
     try {
@@ -166,7 +178,7 @@ module.exports = async argv => {
     server.close();
   };
 
-  ['SIGINT', 'SIGTERM'].forEach(signal => {
+  ['SIGINT', 'SIGTERM'].forEach((signal) => {
     process.on(signal, close);
   });
 

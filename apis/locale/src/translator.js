@@ -10,10 +10,9 @@ export default function translator({ initial = 'en-US', fallback = 'en-US' } = {
 
   /**
    * @class Translator
-   * @hideconstructor
    */
   const api = /** @lends Translator# */ {
-    language: lang => {
+    language: (lang) => {
       if (lang) {
         currentLocale = lang;
       }
@@ -29,15 +28,15 @@ export default function translator({ initial = 'en-US', fallback = 'en-US' } = {
      *   id: 'company.hello_user',
      *   locale: {
      *     'en-US': 'Hello {0}',
-     *     'sv-SE': 'Hej {0}
+     *     'sv-SE': 'Hej {0}'
      *   }
      * });
      * translator.get('company.hello_user', ['John']); // Hello John
      */
-    add: item => {
+    add: (item) => {
       // TODO - disallow override?
       const { id, locale } = item;
-      Object.keys(locale).forEach(lang => {
+      Object.keys(locale).forEach((lang) => {
         if (!dictionaries[lang]) {
           dictionaries[lang] = {};
         }
@@ -45,10 +44,10 @@ export default function translator({ initial = 'en-US', fallback = 'en-US' } = {
       });
     },
     /**
-     * Translates a string for current locale
-     * @param {string} str - Id of the registered string
-     * @param {Array<string>=} args - Values passed down for string interpolation
-     * @returns {string} The translated string
+     * Translates a string for current locale.
+     * @param {string} str - ID of the registered string.
+     * @param {Array<string>=} args - Values passed down for string interpolation.
+     * @returns {string} The translated string.
      */
     get(str, args) {
       let v;

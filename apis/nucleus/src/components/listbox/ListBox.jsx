@@ -14,8 +14,9 @@ import InfiniteLoader from 'react-window-infinite-loader';
 import useLayout from '../../hooks/useLayout';
 
 import Row from './ListBoxRow';
+import Column from './ListBoxColumn';
 
-export default function ListBox({ model, selections, direction }) {
+export default function ListBox({ model, selections, direction, height, width, listLayout = 'vertical' }) {
   const [layout] = useLayout(model);
   const [pages, setPages] = useState(null);
   const loaderRef = useRef(null);
@@ -29,7 +30,7 @@ export default function ListBox({ model, selections, direction }) {
   });
 
   const onClick = useCallback(
-    e => {
+    (e) => {
       if (layout && layout.qListObject.qDimensionInfo.qLocked) {
         return;
       }
@@ -37,20 +38,24 @@ export default function ListBox({ model, selections, direction }) {
       if (!Number.isNaN(elemNumber)) {
         selections.select({
           method: 'selectListObjectValues',
-          params: ['/qListObjectDef', [elemNumber], true],
+          params: ['/qListObjectDef', [elemNumber], !layout.qListObject.qDimensionInfo.qIsOneAndOnlyOne],
         });
       }
     },
-    [model, layout && layout.qListObject.qDimensionInfo.qLocked]
+    [
+      model,
+      layout && !!layout.qListObject.qDimensionInfo.qLocked,
+      layout && !!layout.qListObject.qDimensionInfo.qIsOneAndOnlyOne,
+    ]
   );
 
   const isItemLoaded = useCallback(
-    index => {
+    (index) => {
       if (!pages || !local.current.validPages) {
         return false;
       }
       local.current.checkIdx = index;
-      const page = pages.filter(p => p.qArea.qTop <= index && index < p.qArea.qTop + p.qArea.qHeight)[0];
+      const page = pages.filter((p) => p.qArea.qTop <= index && index < p.qArea.qTop + p.qArea.qHeight)[0];
       return page && page.qArea.qTop <= index && index < page.qArea.qTop + page.qArea.qHeight;
     },
     [layout, pages]
@@ -69,21 +74,21 @@ export default function ListBox({ model, selections, direction }) {
         local.current.queue.shift();
       }
       clearTimeout(local.current.timeout);
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         local.current.timeout = setTimeout(
           () => {
             const sorted = local.current.queue.slice(-2).sort((a, b) => a.start - b.start);
             model
               .getListObjectData(
                 '/qListObjectDef',
-                sorted.map(s => ({
+                sorted.map((s) => ({
                   qTop: s.start,
                   qHeight: s.stop - s.start + 1,
                   qLeft: 0,
                   qWidth: 1,
                 }))
               )
-              .then(p => {
+              .then((p) => {
                 local.current.validPages = true;
                 listData.current.pages = p;
                 setPages(p);
@@ -113,9 +118,10 @@ export default function ListBox({ model, selections, direction }) {
   if (!layout) {
     return null;
   }
-
+  const isVertical = listLayout !== 'horizontal';
   const count = layout.qListObject.qSize.qcy;
-  const ITEM_HEIGHT = 33;
+  const ITEM_SIZE = isVertical ? 33 : 200;
+  const listHeight = height || 8 * ITEM_SIZE;
 
   return (
     <InfiniteLoader
@@ -133,14 +139,16 @@ export default function ListBox({ model, selections, direction }) {
             direction={direction}
             useIsScrolling
             style={{}}
-            height={8 * ITEM_HEIGHT}
+            height={listHeight}
+            width={width}
             itemCount={count}
+            layout={listLayout}
             itemData={{ onClick, pages }}
-            itemSize={ITEM_HEIGHT}
+            itemSize={ITEM_SIZE}
             onItemsRendered={onItemsRendered}
             ref={ref}
           >
-            {Row}
+            {isVertical ? Row : Column}
           </FixedSizeList>
         );
       }}

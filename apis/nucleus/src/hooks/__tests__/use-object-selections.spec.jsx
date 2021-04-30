@@ -40,7 +40,6 @@ describe('useObjectSelections', () => {
     };
     appSel = {
       isModal: sandbox.stub(),
-      abortModal: sandbox.stub(),
     };
     layout = {};
     modalObjectStore = {
@@ -59,7 +58,7 @@ describe('useObjectSelections', () => {
         [require.resolve('../useAppSelections'), () => () => [appSel]],
         [require.resolve('../useLayout'), () => () => [layout]],
         [
-          require.resolve('../../stores/selectionsStore'),
+          require.resolve('../../stores/selections-store'),
           () => ({
             useAppSelectionsStore: () => [
               {
@@ -74,6 +73,12 @@ describe('useObjectSelections', () => {
                 get: () => objectSel,
                 set: (k, v) => {
                   objectSel = v;
+                },
+                dispatch: async (b) => {
+                  if (!b) return;
+                  await act(async () => {
+                    renderer.update(<TestHook ref={ref} hook={useObjectSelections} hookProps={[app, object]} />);
+                  });
                 },
               },
             ],
@@ -108,19 +113,16 @@ describe('useObjectSelections', () => {
 
   it('should create object selections', async () => {
     await render();
-    await render();
     expect(ref.current.result[0]).to.equal(objectSel);
   });
 
   it('should begin', async () => {
-    await render();
     await render();
     await ref.current.result[0].begin(['/foo']);
     expect(appModal.begin).to.have.been.calledWithExactly(object, ['/foo'], true);
   });
 
   it('should clear', async () => {
-    await render();
     await render();
     ref.current.result[0].clear();
     expect(object.resetMadeSelections).to.have.been.calledWithExactly();
@@ -132,20 +134,17 @@ describe('useObjectSelections', () => {
 
   it('should confirm', async () => {
     await render();
-    await render();
     await ref.current.result[0].confirm();
     expect(appModal.end).to.have.been.calledWithExactly(true);
   });
 
   it('should cancel', async () => {
     await render();
-    await render();
     await ref.current.result[0].cancel();
     expect(appModal.end).to.have.been.calledWithExactly(false);
   });
 
   it('should select', async () => {
-    await render();
     await render();
 
     appSel.isModal.returns(true);
@@ -154,8 +153,7 @@ describe('useObjectSelections', () => {
     expect(res).to.equal(true);
   });
 
-  it('should clear on non successful select', async () => {
-    await render();
+  it('should return false on non successful select', async () => {
     await render();
 
     appSel.isModal.returns(true);
@@ -164,8 +162,36 @@ describe('useObjectSelections', () => {
     expect(res).to.equal(false);
   });
 
-  it('can clear', async () => {
+  it('should not emit cleared on non successful select', async () => {
     await render();
+    const cleared = sandbox.stub();
+    objectSel.on('cleared', cleared);
+
+    appSel.isModal.returns(true);
+    object.select.returns(false);
+    await objectSel.select({ method: 'select', params: [] });
+    expect(cleared).to.not.be.called;
+  });
+
+  it('should call resetMadeSelections on non successful select', async () => {
+    await render();
+
+    appSel.isModal.returns(true);
+    object.select.returns(false);
+    await objectSel.select({ method: 'select', params: [] });
+    expect(object.resetMadeSelections).to.have.been.calledWithExactly();
+  });
+
+  it('should not be possible to clear after select has be called with resetMadeSelections', async () => {
+    await render();
+    appSel.isModal.returns(true);
+    object.select.returns(true);
+    await objectSel.select({ method: 'resetMadeSelections', params: [] });
+
+    expect(objectSel.canClear()).to.equal(false);
+  });
+
+  it('can clear', async () => {
     await render();
     layout = {
       qListObject: {
@@ -177,18 +203,16 @@ describe('useObjectSelections', () => {
     objectSel.setLayout(layout);
     expect(ref.current.result[0].canClear()).to.equal(true);
 
-    layout = {
-      qSelectionInfo: {
-        qMadeSelections: true,
-      },
-    };
+    layout = {};
     objectSel.setLayout(layout);
+    appSel.isModal.returns(true);
+    object.select.returns(true);
+    await objectSel.select({ method: 'select', params: [] });
     expect(ref.current.result[0].canClear()).to.equal(true);
   });
 
   it('can confirm', async () => {
     await render();
-    await render();
     layout = {
       qListObject: {
         qDimensionInfo: {
@@ -199,17 +223,15 @@ describe('useObjectSelections', () => {
     objectSel.setLayout(layout);
     expect(ref.current.result[0].canConfirm()).to.equal(true);
 
-    layout = {
-      qSelectionInfo: {
-        qMadeSelections: true,
-      },
-    };
+    layout = {};
     objectSel.setLayout(layout);
+    appSel.isModal.returns(true);
+    object.select.returns(true);
+    await objectSel.select({ method: 'select', params: [] });
     expect(ref.current.result[0].canConfirm()).to.equal(true);
   });
 
   it('can cancel', async () => {
-    await render();
     await render();
     layout = {
       qListObject: {
@@ -228,14 +250,12 @@ describe('useObjectSelections', () => {
 
   it('return modal state', async () => {
     await render();
-    await render();
 
     appSel.isModal.returns(true);
     expect(ref.current.result[0].isModal()).to.equal(true);
   });
 
   it('begin modal state', async () => {
-    await render();
     await render();
 
     ref.current.result[0].goModal(['/bar']);
@@ -244,17 +264,8 @@ describe('useObjectSelections', () => {
 
   it('end modal state', async () => {
     await render();
-    await render();
 
     ref.current.result[0].noModal(true);
     expect(appModal.end).to.have.been.calledWithExactly(true);
-  });
-
-  it('abort modal state', async () => {
-    await render();
-    await render();
-
-    ref.current.result[0].abortModal();
-    expect(appSel.abortModal).to.have.been.calledWithExactly(true);
   });
 });
